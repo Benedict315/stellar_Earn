@@ -127,6 +127,7 @@ JWT_EXPIRATION=7d
 STELLAR_NETWORK=testnet
 SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 HORIZON_URL=https://horizon-testnet.stellar.org
+STELLAR_FINALITY_CONFIRMATIONS=3
 
 # Contract & Wallet
 CONTRACT_ID=<your-deployed-contract-id>

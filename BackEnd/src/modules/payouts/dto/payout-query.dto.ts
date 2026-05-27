@@ -68,6 +68,8 @@ export class PayoutResponseDto {
   @ApiPropertyOptional() submissionId?: string | null;
   @ApiPropertyOptional() transactionHash?: string | null;
   @ApiPropertyOptional() stellarLedger?: number | null;
+  @ApiProperty() settlementConfirmations: number;
+  @ApiPropertyOptional() settlementConfirmedAt?: Date | null;
   @ApiPropertyOptional() failureReason?: string | null;
   @ApiProperty() retryCount: number;
   @ApiPropertyOptional() processedAt?: Date | null;

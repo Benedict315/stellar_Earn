@@ -142,6 +142,8 @@ export class PayoutsController {
       submissionId: payout.submissionId,
       transactionHash: payout.transactionHash,
       stellarLedger: payout.stellarLedger,
+      settlementConfirmations: payout.settlementConfirmations,
+      settlementConfirmedAt: payout.settlementConfirmedAt,
       failureReason: payout.failureReason,
       retryCount: payout.retryCount,
       processedAt: payout.processedAt,
