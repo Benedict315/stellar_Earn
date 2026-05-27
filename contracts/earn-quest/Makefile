@@ -1,3 +1,29 @@
+CRATE := earn-quest
+WASM := $(shell ls target/wasm32-unknown-unknown/release/*.wasm 2>/dev/null | head -n1)
+NETWORK ?= testnet
+
+.PHONY: build test fmt clippy deploy invoke-register
+
+build:
+	cargo build --release --target wasm32-unknown-unknown
+
+test:
+	cargo test
+
+fmt:
+	cargo fmt
+
+clippy:
+	cargo clippy --all-targets --all-features -- -D warnings
+
+deploy:
+	ifndef SOROBAN_SECRET_KEY
+		$(error SOROBAN_SECRET_KEY is not set)
+	endif
+	@soroban contract deploy --wasm $(WASM) --network $(NETWORK) --secret-key $(SOROBAN_SECRET_KEY) --rpc-url $(SOROBAN_RPC_URL)
+
+invoke-register:
+	@soroban contract invoke --id $(CONTRACT_ID) --fn register_task --arg id=Q-001 --arg reward_asset=... --arg amount=100 --rpc-url $(SOROBAN_RPC_URL)
 .PHONY: help test build snapshots snapshots-clean snapshots-verify snapshots-restore snapshots-backup
 
 # Default target
