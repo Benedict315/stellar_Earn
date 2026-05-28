@@ -7,7 +7,6 @@ import { WalletConnectionModal } from '@/components/wallet/WalletConnectionModal
 import { SessionManager } from '@/components/auth/SessionManager';
 import { ConsentBanner } from '@/components/analytics/ConsentBanner';
 import { SkipToContent } from '@/components/a11y/SkipToContent';
-import { A11yAnnouncerProvider } from '@/components/a11y/A11yAnnouncer';
 import PerformanceMonitor from '@/components/ui/PerformanceMonitor';
 import { EnvValidator } from '@/components/providers/EnvValidator';
 import { SWRegister } from '@/components/SWRegister';
