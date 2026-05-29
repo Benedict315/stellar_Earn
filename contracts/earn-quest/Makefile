@@ -68,6 +68,16 @@ build:
 	@echo "Building contract..."
 	cargo build --release --target wasm32-unknown-unknown
 
+# Generate provenance attestation for the built WASM artifact
+provenance: build
+	@echo "Generating provenance attestation for WASM artifact..."
+	node scripts/generate-provenance.js
+
+# Validate the generated provenance attestation
+check-provenance:
+	@echo "Validating provenance attestation..."
+	node scripts/check-provenance.js
+
 # Run tests
 test:
 	@echo "Running tests..."

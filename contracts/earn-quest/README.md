@@ -25,6 +25,14 @@ cargo build
 cargo build --target wasm32-unknown-unknown --release
 ```
 
+After a successful WASM build, generate and validate a provenance attestation:
+
+```bash
+node scripts/generate-provenance.js
+node scripts/check-provenance.js
+```
+
+This creates `target/wasm32-unknown-unknown/release/earn_quest.wasm.provenance.json` alongside the built artifact.
 ### Development Setup (Git Hooks)
 
 After cloning, install the pre-commit hooks so `cargo fmt`, `clippy`, and fast unit
