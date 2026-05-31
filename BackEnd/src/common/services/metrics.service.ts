@@ -197,6 +197,16 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     this.registerCounter('job_dead_letter_jobs_total', 'Total background jobs moved to the dead letter queue');
     this.registerGauge('dead_letter_queue_size', 'Number of jobs currently in the dead letter queue');
     this.registerHistogram('job_processing_duration_ms', 'Background job processing duration in milliseconds');
+    
+    // SLA metrics for submission review times
+    this.registerHistogram(
+      'submission_review_duration_seconds',
+      'Time from submission creation to approval/rejection in seconds',
+      [60, 300, 600, 1800, 3600, 7200, 14400, 28800, 86400], // 1min, 5min, 10min, 30min, 1h, 2h, 4h, 8h, 24h
+    );
+    this.registerCounter('submission_review_total', 'Total number of submission reviews');
+    this.registerCounter('submission_approval_total', 'Total number of approved submissions');
+    this.registerCounter('submission_rejection_total', 'Total number of rejected submissions');
   }
 
   private startSystemCollection(): void {
