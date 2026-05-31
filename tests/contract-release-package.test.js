@@ -26,7 +26,7 @@ function writeFile(root, rel, content) {
 function testBuildReleasePackage() {
   const tmp = mkdtemp();
   try {
-    writeFile(tmp, 'target/wasm32-unknown-unknown/release/earn_quest.wasm', 'fake-wasm-binary');
+    writeFile(tmp, 'target/wasm32-unknown-unknown/release/earn_quest.wasm', 'fake-wasm-binary-');
     writeJson(tmp, 'target/wasm32-unknown-unknown/release/earn_quest.wasm.provenance.json', {
       schemaVersion: '1.0',
       generatedAt: new Date().toISOString(),
@@ -36,8 +36,8 @@ function testBuildReleasePackage() {
       target: 'wasm32-unknown-unknown',
       toolchain: 'rustc 1.0.0',
       artifact: 'target/wasm32-unknown-unknown/release/earn_quest.wasm',
-      artifactSizeBytes: 16,
-      artifactHash: crypto.createHash('sha256').update('fake-wasm-binary').digest('hex'),
+      artifactSizeBytes: 17,
+      artifactHash: crypto.createHash('sha256').update('fake-wasm-binary-').digest('hex'),
       artifactHashAlgorithm: 'sha256'
     });
 
@@ -47,8 +47,8 @@ function testBuildReleasePackage() {
 
     assert.strictEqual(path.basename(result.releaseDir), 'release');
     assert.strictEqual(manifest.artifact, 'earn_quest.wasm');
-    assert.strictEqual(manifest.artifactSizeBytes, 16);
-    assert.strictEqual(manifest.artifactHash, crypto.createHash('sha256').update('fake-wasm-binary').digest('hex'));
+    assert.strictEqual(manifest.artifactSizeBytes, 17);
+    assert.strictEqual(manifest.artifactHash, crypto.createHash('sha256').update('fake-wasm-binary-').digest('hex'));
     assert.ok(checksum.includes('earn_quest.wasm'));
     assert.ok(fs.existsSync(result.releaseWasm), 'WASM artifact should be copied into release directory');
     assert.ok(fs.existsSync(result.releaseProvenance), 'Provenance file should be copied into release directory');
