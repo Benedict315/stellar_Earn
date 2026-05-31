@@ -11,9 +11,11 @@ import { CleanupProcessor } from './processors/cleanup.processor';
 import { WebhookProcessor } from './processors/webhook.processor';
 import { AnalyticsProcessor } from './processors/analytics.processor';
 import { QuestProcessor } from './processors/quest.processor';
+import { DependencyProcessor } from './processors/dependency.processor';
 import { JobLog, JobLogRetry, JobDependency, JobSchedule } from './entities/job-log.entity';
 import { DataExport } from '../users/entities/data-export.entity';
 import { DataExportListener } from './listeners/data-export.listener';
+import { DependencyFreshnessService } from '../../common/services/dependency-freshness.service';
 
 @Module({
   imports: [
@@ -30,7 +32,9 @@ import { DataExportListener } from './listeners/data-export.listener';
     WebhookProcessor,
     AnalyticsProcessor,
     QuestProcessor,
+    DependencyProcessor,
     DataExportListener,
+    DependencyFreshnessService,
   ],
   controllers: [JobsController],
   exports: [
@@ -44,6 +48,8 @@ import { DataExportListener } from './listeners/data-export.listener';
     WebhookProcessor,
     AnalyticsProcessor,
     QuestProcessor,
+    DependencyProcessor,
+    DependencyFreshnessService,
   ],
 })
 export class JobsModule {}
