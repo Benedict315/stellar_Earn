@@ -2,7 +2,12 @@ CRATE := earn-quest
 WASM := $(shell ls target/wasm32-unknown-unknown/release/*.wasm 2>/dev/null | head -n1)
 NETWORK ?= testnet
 
-.PHONY: help test test-verbose test-fast build fmt clippy deploy invoke-register license-check deny-check migration-dry-run migration-apply snapshots snapshots-clean snapshots-verify snapshots-restore snapshots-backup snapshots-stats snapshots-admin snapshots-quest snapshots-payout snapshots-security clean clean-all install-hooks check-hooks remove-hooks
+.PHONY: help test test-verbose test-fast build fmt clippy deploy invoke-register \
+license-check deny-check migration-dry-run migration-apply \
+snapshots snapshots-clean snapshots-verify snapshots-restore snapshots-backup \
+snapshots-stats snapshots-admin snapshots-quest snapshots-payout snapshots-security \
+local-env-setup local-env-test local-env-clean \
+clean clean-all install-hooks check-hooks remove-hooks
 
 # Default target
 help:
@@ -28,6 +33,16 @@ help:
 	@echo "  make deploy              - Deploy the compiled WASM to the network"
 	@echo "  make invoke-register     - Invoke register_task function on deployed contract"
 	@echo ""
+
+	@echo "Local Deterministic Environment:"
+	@echo "  make local-env-setup     - Start sandbox, deploy contracts, write .env.local"
+	@echo "  make local-env-test      - Run end-to-end integration tests against local sandbox"
+	@echo "  make local-env-clean     - Stop sandbox Docker container and remove .env.local"
+	@echo "  make local-env-setup SKIP_DOCKER=1  - Skip Docker (assume node already running)"
+	@echo "  make local-env-test QUICK=1         - Run abbreviated test suite"
+	@echo "  make local-env-test VERBOSE=1       - Show full CLI output for each step"
+	@echo ""
+
 	@echo "Migration & Snapshots:"
 	@echo "  make migration-dry-run   - Preview schema migration for STATE=<path>"
 	@echo "  make migration-apply     - Write migrated schema to OUTPUT=<path>"
@@ -52,6 +67,16 @@ help:
 build:
 	@echo "Building contract..."
 	cargo build --release --target wasm32-unknown-unknown
+
+# Generate provenance attestation for the built WASM artifact
+provenance: build
+	@echo "Generating provenance attestation for WASM artifact..."
+	node scripts/generate-provenance.js
+
+# Validate the generated provenance attestation
+check-provenance:
+	@echo "Validating provenance attestation..."
+	node scripts/check-provenance.js
 
 # Run tests
 test:
@@ -196,3 +221,31 @@ clean-all: clean
 	@echo "Cleaning snapshots and backups..."
 	@rm -rf test_snapshots_backup_*
 	@echo "Done!"
+
+# ── Deterministic Local Environment ──────────────────────────────────────────
+
+# Start the local Stellar standalone network, deploy contracts,
+# and write deterministic keypairs + IDs to .env.local
+local-env-setup:
+	@echo "Setting up deterministic local environment..."
+	@chmod +x ./setup-local-env.sh
+	@if [ "$(SKIP_DOCKER)" = "1" ]; then \
+		./setup-local-env.sh --skip-docker; \
+	else \
+		./setup-local-env.sh; \
+	fi
+
+# Run end-to-end integration tests against the local sandbox
+local-env-test:
+	@echo "Running deterministic local environment tests..."
+	@chmod +x ./run-deterministic-tests.sh
+	@FLAGS=""
+	@if [ "$(VERBOSE)" = "1" ]; then FLAGS="$$FLAGS --verbose"; fi; \
+	if [ "$(QUICK)" = "1" ]; then FLAGS="$$FLAGS --quick"; fi; \
+	./run-deterministic-tests.sh $$FLAGS
+
+# Stop local network Docker container and remove .env.local
+local-env-clean:
+	@echo "Tearing down local environment..."
+	@chmod +x ./setup-local-env.sh
+	@./setup-local-env.sh --clean

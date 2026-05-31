@@ -13,3 +13,8 @@ const nextConfig: NextConfig = {
 };
 
 export default withAnalyzer(nextConfig);
+const analyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+export default analyzer(nextConfig);

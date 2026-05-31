@@ -1,43 +1,102 @@
-# CODEOWNERS — FE-069
+# CODEOWNERS — FE-069 / BE-132
 #
 # Defines required reviewers for pull requests that touch critical paths in
 # this repository.  GitHub evaluates rules top-to-bottom; the LAST matching
 # pattern wins, so more-specific rules are placed below more-general ones.
 #
-# Replace the placeholder handles below with your project's actual GitHub
-# usernames or team slugs (e.g. @your-org/frontend-leads) before merging.
-#
 # Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # ─── 1. Global fallback ──────────────────────────────────────────────────────
-# Every file not matched by a more-specific rule falls back to these reviewers.
 *  @RUKAYAT-CODER @od-hunter
 
 # ─── 2. GitHub configuration ─────────────────────────────────────────────────
-# Workflows, issue templates, PR templates, and this file itself.
 .github/  @RUKAYAT-CODER @Habibah371
 
-# ─── 3. FrontEnd/my-app — whole directory ────────────────────────────────────
-# Any change inside the Next.js application requires at least one frontend
-# reviewer.
+# ─── 3. BackEnd — whole directory ────────────────────────────────────────────
+BackEnd/  @walexjnr @od-hunter
+
+# ─── 4. BackEnd source modules ───────────────────────────────────────────────
+BackEnd/src/  @walexjnr @od-hunter
+
+# Auth module — security-critical; bugs can expose user accounts
+BackEnd/src/modules/auth/  @walexjnr @Habibah371
+
+# Payouts module — financial logic; bugs can cause fund loss
+BackEnd/src/modules/payouts/  @walexjnr @od-hunter
+
+# Quests module
+BackEnd/src/modules/quests/  @walexjnr @od-hunter
+
+# Submissions module
+BackEnd/src/modules/submissions/  @walexjnr @od-hunter
+
+# Jobs / queue module — background processing
+BackEnd/src/modules/jobs/  @walexjnr @od-hunter
+
+# Cache module
+BackEnd/src/modules/cache/  @walexjnr @od-hunter
+
+# Notifications module
+BackEnd/src/modules/notifications/  @walexjnr @od-hunter
+
+# Webhooks module
+BackEnd/src/modules/webhooks/  @walexjnr @Habibah371
+
+# Stellar / blockchain module — cryptographic logic
+BackEnd/src/modules/stellar/  @walexjnr @Habibah371
+
+# Analytics module
+BackEnd/src/modules/analytics/  @walexjnr @od-hunter
+
+# Email module
+BackEnd/src/modules/email/  @walexjnr @od-hunter
+
+# Feature flags
+BackEnd/src/modules/feature-flags/  @walexjnr @od-hunter
+
+# Health checks
+BackEnd/src/modules/health/  @walexjnr @od-hunter
+
+# Common utilities, guards, interceptors, filters
+BackEnd/src/common/  @walexjnr @od-hunter
+
+# Configuration
+BackEnd/src/config/  @walexjnr @Habibah371
+
+# Database migrations — schema changes are irreversible in production
+BackEnd/src/database/migrations/  @walexjnr @Habibah371
+
+# Events system
+BackEnd/src/events/  @walexjnr @od-hunter
+
+# ─── 5. BackEnd configuration files ──────────────────────────────────────────
+BackEnd/package.json  @walexjnr @Habibah371
+BackEnd/tsconfig.json  @walexjnr
+BackEnd/tsconfig.build.json  @walexjnr
+BackEnd/nest-cli.json  @walexjnr
+BackEnd/.env.example  @walexjnr @Habibah371
+
+# ─── 6. BackEnd tests ────────────────────────────────────────────────────────
+BackEnd/test/  @walexjnr @od-hunter
+
+# ─── 7. Smart contracts ──────────────────────────────────────────────────────
+contracts/  @walexjnr @Habibah371
+Contract_archived/  @walexjnr @Habibah371
+
+# ─── 8. FrontEnd/my-app — whole directory ────────────────────────────────────
 FrontEnd/my-app/  @RUKAYAT-CODER @od-hunter
 
-# ─── 4. App router (Next.js pages & layouts) ─────────────────────────────────
-# Changes to routing structure, root layout, and error boundaries affect the
-# entire user experience.
+# ─── 9. App router (Next.js pages & layouts) ─────────────────────────────────
 FrontEnd/my-app/app/  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/app/layout.tsx  @RUKAYAT-CODER
 FrontEnd/my-app/app/page.tsx  @RUKAYAT-CODER
 FrontEnd/my-app/app/error.tsx  @RUKAYAT-CODER
 FrontEnd/my-app/app/not-found.tsx  @RUKAYAT-CODER
 
-# ─── 5. Admin panel ──────────────────────────────────────────────────────────
-# Admin routes are privileged surfaces; changes need explicit sign-off from
-# at least two reviewers.
+# ─── 10. Admin panel ─────────────────────────────────────────────────────────
 FrontEnd/my-app/app/admin/  @RUKAYAT-CODER @Habibah371
 
-# ─── 6. Authentication & wallet (security-critical) ──────────────────────────
-# Bugs here can expose user funds or accounts.
+# ─── 11. Authentication & wallet (security-critical) ─────────────────────────
 FrontEnd/my-app/context/AuthContext.tsx  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/context/WalletContext.tsx  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/context/walletTypes.ts  @RUKAYAT-CODER @Habibah371
@@ -45,49 +104,33 @@ FrontEnd/my-app/context/  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/components/auth/  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/components/wallet/  @RUKAYAT-CODER @Habibah371
 
-# ─── 7. Submissions flow ─────────────────────────────────────────────────────
-# Submission components and pages handle user-generated proof data; changes
-# affect on-chain payout eligibility.
+# ─── 12. Submissions flow ────────────────────────────────────────────────────
 FrontEnd/my-app/app/submissions/  @RUKAYAT-CODER @fahatadam
 FrontEnd/my-app/components/submission/  @RUKAYAT-CODER @fahatadam
 
-# ─── 8. Rewards & quests ─────────────────────────────────────────────────────
+# ─── 13. Rewards & quests ────────────────────────────────────────────────────
 FrontEnd/my-app/app/quests/  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/app/rewards/  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/components/quest/  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/components/rewards/  @RUKAYAT-CODER @od-hunter
 
-# ─── 9. Core library ─────────────────────────────────────────────────────────
-# Shared utilities, hooks, and types consumed across the whole application.
+# ─── 14. Core library ────────────────────────────────────────────────────────
 FrontEnd/my-app/lib/  @RUKAYAT-CODER @od-hunter
-
-# API client layer — changes to request/response contracts need review.
 FrontEnd/my-app/lib/api/  @RUKAYAT-CODER @Habibah371
-
-# Global state store — changes affect all components reading from the store.
 FrontEnd/my-app/lib/store/  @RUKAYAT-CODER @fahatadam
-
-# Stellar-specific helpers — cryptographic or network logic.
 FrontEnd/my-app/lib/stellar/  @RUKAYAT-CODER @Habibah371
-
-# Validation schemas — must stay in sync with backend DTOs.
 FrontEnd/my-app/lib/validation/  @RUKAYAT-CODER @Habibah371
 
-# ─── 10. Shared UI components ────────────────────────────────────────────────
-# Design-system primitives used across every page; visual regressions have
-# high blast radius.
+# ─── 15. Shared UI components ────────────────────────────────────────────────
 FrontEnd/my-app/components/ui/  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/components/layout/  @RUKAYAT-CODER @od-hunter
 
-# ─── 11. Styles ──────────────────────────────────────────────────────────────
-# Global stylesheet and Tailwind config affect every rendered page.
+# ─── 16. Styles ──────────────────────────────────────────────────────────────
 FrontEnd/my-app/styles/  @RUKAYAT-CODER
 FrontEnd/my-app/tailwind.config.js  @RUKAYAT-CODER
 FrontEnd/my-app/app/globals.css  @RUKAYAT-CODER
 
-# ─── 12. Project configuration ───────────────────────────────────────────────
-# Build, TypeScript, and dependency config — accidental changes can silently
-# break the production build or introduce supply-chain risk.
+# ─── 17. Project configuration ───────────────────────────────────────────────
 FrontEnd/my-app/next.config.ts  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/next.config.csp.ts  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/tsconfig.json  @RUKAYAT-CODER
@@ -95,16 +138,13 @@ FrontEnd/my-app/package.json  @RUKAYAT-CODER @Habibah371
 FrontEnd/my-app/eslint.config.mjs  @RUKAYAT-CODER
 FrontEnd/my-app/postcss.config.mjs  @RUKAYAT-CODER
 
-# ─── 13. Test infrastructure ─────────────────────────────────────────────────
-# Test configuration determines what runs in CI; accidental changes can
-# silently disable coverage gates.
+# ─── 18. Test infrastructure ─────────────────────────────────────────────────
 FrontEnd/my-app/vitest.config.ts  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/playwright.config.ts  @RUKAYAT-CODER @od-hunter
 FrontEnd/my-app/tests/  @RUKAYAT-CODER @od-hunter @fahatadam
 FrontEnd/my-app/lib/__tests__/  @RUKAYAT-CODER @od-hunter
 
-# ─── 14. Analytics & instrumentation ─────────────────────────────────────────
-# Telemetry hooks and Sentry wiring; touches privacy-sensitive data handling.
+# ─── 19. Analytics & instrumentation ─────────────────────────────────────────
 FrontEnd/my-app/instrumentation.ts  @RUKAYAT-CODER
 FrontEnd/my-app/lib/analytics/  @RUKAYAT-CODER @fahatadam
 FrontEnd/my-app/components/analytics/  @RUKAYAT-CODER @fahatadam

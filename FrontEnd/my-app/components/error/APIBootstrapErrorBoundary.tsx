@@ -2,7 +2,6 @@
 
 import React, { ReactNode } from 'react';
 import * as Sentry from '@sentry/nextjs';
-import { ErrorMessage } from './ErrorMessage';
 import { logError } from '@/lib/utils/error-handler';
 import type { AppError } from '@/lib/utils/error-handler';
 
@@ -24,21 +23,22 @@ interface APIBootstrapErrorState {
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
   retryCount: number;
+  isOffline: boolean;
 }
 
 /**
  * Error boundary specifically designed for handling API bootstrap failures
  * in homepage widgets. Provides better recovery and user feedback for
- * async/API errors, not just render errors.
+ * async/API errors, including robust offline and network-unreachable fallbacks.
  *
  * @example
  * ```tsx
  * <APIBootstrapErrorBoundary
- *   componentName="FeaturedQuests"
- *   retryable={true}
- *   onError={(error, name) => console.log(`Error in ${name}:`, error)}
+ * componentName="FeaturedQuests"
+ * retryable={true}
+ * onError={(error, name) => console.log(`Error in ${name}:`, error)}
  * >
- *   <FeaturedQuests />
+ * <FeaturedQuests />
  * </APIBootstrapErrorBoundary>
  * ```
  */
@@ -55,43 +55,85 @@ export class APIBootstrapErrorBoundary extends React.Component<
       error: null,
       errorInfo: null,
       retryCount: 0,
+      isOffline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
     };
   }
 
-  static getDerivedStateFromError(error: Error): Partial<APIBootstrapErrorState> {
+  componentDidMount() {
+    window.addEventListener('offline', this.handleOffline);
+    window.addEventListener('online', this.handleOnline);
+    window.addEventListener('network-unreachable', this.handleNetworkError as EventListener);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('offline', this.handleOffline);
+    window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('network-unreachable', this.handleNetworkError as EventListener);
+    if (this.resetTimer) {
+      clearTimeout(this.resetTimer);
+    }
+  }
+
+  handleOffline = () => {
+    this.setState({ isOffline: true });
+  };
+
+  handleOnline = () => {
+    this.setState({ isOffline: false });
+    if (this.state.hasError) {
+      this.resetError();
+    }
+  };
+
+  handleNetworkError = (event: CustomEvent) => {
+    this.setState({
+      hasError: true,
+      isOffline: true,
+      error: event.detail?.originalError || new Error('Network Unreachable'),
+    });
+  };
+
+  static getDerivedStateFromError(error: Error | AppError): Partial<APIBootstrapErrorState> {
+    const isNetworkError =
+      error.message.toLowerCase().includes('offline') ||
+      error.message.toLowerCase().includes('network') ||
+      error.message.toLowerCase().includes('unreachable') ||
+      (error as any).code === 'ERR_NETWORK' ||
+      (error as any).code === 'NETWORK_ERROR' ||
+      (error as any).code === 'TIMEOUT_ERROR';
+
     return {
       hasError: true,
       error,
       errorInfo: null,
+      isOffline: isNetworkError || (typeof navigator !== 'undefined' && !navigator.onLine),
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log the error with context
-    const errorContext = {
-      component: this.props.componentName,
-      retryCount: this.state.retryCount,
-      timestamp: new Date().toISOString(),
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-    };
-
-    logError(error, `API Bootstrap Error - ${this.props.componentName}`);
-
-    // Report to Sentry with context
-    Sentry.captureException(error, {
-      contexts: {
-        bootstrap: errorContext,
-      },
-      tags: {
+    if (!this.state.isOffline) {
+      const errorContext = {
         component: this.props.componentName,
-        errorBoundary: 'APIBootstrap',
-      },
-    });
+        retryCount: this.state.retryCount,
+        timestamp: new Date().toISOString(),
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      };
 
-    // Call the onError callback if provided
+      logError(error, `API Bootstrap Error - ${this.props.componentName}`);
+
+      Sentry.captureException(error, {
+        contexts: {
+          bootstrap: errorContext,
+        },
+        tags: {
+          component: this.props.componentName,
+          errorBoundary: 'APIBootstrap',
+        },
+      });
+    }
+
     this.props.onError?.(error, this.props.componentName);
 
-    // Update state with error info
     this.setState({
       error,
       errorInfo,
@@ -99,37 +141,71 @@ export class APIBootstrapErrorBoundary extends React.Component<
   }
 
   resetError = () => {
-    // Clear any pending timers
     if (this.resetTimer) {
       clearTimeout(this.resetTimer);
       this.resetTimer = null;
     }
 
-    this.setState({
+    this.setState((prevState) => ({
       hasError: false,
       error: null,
       errorInfo: null,
-      retryCount: this.state.retryCount + 1,
-    });
+      retryCount: prevState.retryCount + 1,
+      isOffline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
+    }));
   };
 
   render() {
-    if (this.state.hasError) {
+    if (this.state.hasError || this.state.isOffline) {
       const { fallback: FallbackComponent, componentName, showDetails = false } = this.props;
-      const { error } = this.state;
+      const { error, isOffline } = this.state;
 
-      // Use custom fallback component if provided
-      if (FallbackComponent) {
+      if (isOffline) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[250px] p-6 text-center bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50">
+            <div className="p-4 mb-4 bg-slate-200 dark:bg-slate-800 rounded-full">
+              <svg 
+                className="w-8 h-8 text-slate-500 dark:text-slate-400" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.168a2 2 0 11-2.829-2.83m0 0l-7.071-7.071" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-100">
+              You are offline
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6 max-w-sm">
+              We couldn't connect to the server. You can still view cached content, but {componentName} needs an active connection.
+            </p>
+            <button
+              onClick={() => {
+                if (navigator.onLine) this.resetError();
+                else window.location.reload();
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 dark:bg-slate-100 px-4 py-2 text-sm font-medium text-white dark:text-slate-900 transition-colors hover:bg-slate-800 dark:hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Try Again
+            </button>
+          </div>
+        );
+      }
+
+      if (FallbackComponent && error) {
         return (
           <FallbackComponent
-            error={error!}
+            error={error}
             resetError={this.resetError}
             componentName={componentName}
           />
         );
       }
 
-      // Default fallback UI for API bootstrap errors
       return (
         <div
           className="w-full rounded-lg border border-red-900/30 bg-red-900/10 p-6"
