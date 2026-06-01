@@ -4,14 +4,16 @@ const FRONTEND_DIR = 'FrontEnd/my-app';
 const BACKEND_DIR = 'BackEnd';
 
 function buildCommands(cwd, command, files) {
-  const relativeFiles = files.map((file) => path.relative(cwd, file).replace(/\\/g, '/'));
-  if (relativeFiles.length === 0) {
+  if (files.length === 0) {
     return [];
   }
 
   // Use --prefix instead of changing directories to be compatible with
   // Windows/git-hook environments where `cd` may fail.
-  return [`npx --prefix ${cwd} ${command} ${relativeFiles.join(' ')}`];
+  // Note: npx --prefix does NOT change the working directory, so we must
+  // pass the absolute paths (or paths relative to root) to the command.
+  const escapedFiles = files.map((file) => `"${file.replace(/\\/g, '/')}"`);
+  return [`npx --prefix ${cwd} ${command} ${escapedFiles.join(' ')}`];
 }
 
 function buildNpmScript(cwd, scriptName, files) {
