@@ -224,7 +224,7 @@ export class CacheService {
   }
 
   resetStats(): void {
-    this.analyticsService.resetAnalytics();
+    // Analytics are tracked externally; this is a no-op for compatibility
   }
 
   generateKey(prefix: string, params: Record<string, any>): string {

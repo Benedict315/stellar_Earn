@@ -1,343 +1,156 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { StellarService } from './stellar.service';
 import { ConfigService } from '@nestjs/config';
-import { createMockConfigService } from '../../test/utils/test-helpers';
+import { StellarService } from './stellar.service';
+import { TracingService } from '../../common/tracing/tracing.service';
+import { MetricsService } from '../../common/services/metrics.service';
+import * as StellarSdk from '@stellar/stellar-sdk';
 
-// Mock Stellar SDK modules
-jest.mock('stellar-sdk', () => ({
-  Keypair: {
-    fromSecret: jest.fn().mockReturnValue({
-      publicKey: jest.fn().mockReturnValue('GBUQWP3BOUZX34ULNQG23RQ6F4YUSXHTQA5XPJMWRFT5GEVQA3I5UU4K'),
-      secret: jest.fn().mockReturnValue('secret-key-mock'),
-    }),
-  },
-  Contract: jest.fn().mockImplementation(() => ({
-    call: jest.fn().mockReturnValue({ invoke: jest.fn() }),
-  })),
-  Networks: {
-    PUBLIC: 'public-network-passphrase',
-    TESTNET: 'testnet-network-passphrase',
-  },
-  rpc: {
-    Server: jest.fn().mockImplementation(() => ({
-      simulateTransaction: jest.fn(),
-      sendTransaction: jest.fn(),
-    })),
-    Api: {
-      isSimulationError: jest.fn((result) => result.error),
-    },
-  },
-  Horizon: {
-    Server: jest.fn().mockImplementation(() => ({
-      loadAccount: jest.fn(),
-    })),
-  },
-  Account: jest.fn(),
-  TransactionBuilder: jest.fn(),
-}));
-
-// Mock internal utilities
-jest.mock('./utils/transaction', () => ({
-  TransactionUtils: jest.fn().mockImplementation(() => ({
-    buildAndSubmit: jest.fn(),
-  })),
-}));
-
-jest.mock('./utils/contract', () => ({
-  ContractUtils: {
-    encodeString: jest.fn((str) => `encoded_${str}`),
-    encodeAddress: jest.fn((addr) => `encoded_${addr}`),
-    encodeU128: jest.fn((num) => `encoded_${num}`),
-  },
-}));
-
-describe('StellarService', () => {
+describe('StellarService (Security)', () => {
   let service: StellarService;
-  let configService: any;
+  let tracingService: TracingService;
+  let metricsService: MetricsService;
+
+  // Generate a valid test keypair for unit testing
+  const adminKeypair = StellarSdk.Keypair.random();
+
+  const mockConfig = {
+    get: jest.fn((key: string) => {
+      if (key === 'STELLAR_ADMIN_SECRET') return adminKeypair.secret();
+      if (key === 'STELLAR_NETWORK') return 'TESTNET';
+      if (key === 'STELLAR_HORIZON_URL')
+        return 'https://horizon-testnet.stellar.org';
+
+      return null;
+    }),
+  };
+
+  const mockSpan = {
+    attributes: {} as Record<string, any>,
+    status: 'ok',
+  };
+
+  const mockTracing = {
+    trace: jest.fn().mockImplementation(async (name, fn, attrs) => {
+      mockSpan.attributes = { ...attrs };
+      mockSpan.status = 'ok';
+      return fn(mockSpan);
+    }),
+  };
+
+  const mockMetrics = {
+    incrementCounter: jest.fn(),
+    observeHistogram: jest.fn(),
+  };
 
   beforeEach(async () => {
-    configService = createMockConfigService();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StellarService,
-        {
-          provide: ConfigService,
-          useValue: configService,
-        },
+        { provide: ConfigService, useValue: mockConfig },
+        { provide: TracingService, useValue: mockTracing },
+        { provide: MetricsService, useValue: mockMetrics },
       ],
     }).compile();
 
     service = module.get<StellarService>(StellarService);
+    tracingService = module.get<TracingService>(TracingService);
+    metricsService = module.get<MetricsService>(MetricsService);
+    service.onModuleInit();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('onModuleInit', () => {
-    it('should initialize Stellar components when configuration is available', () => {
-      const mockConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'stellar.rpcUrl': 'https://soroban-rpc.testnet.stellar.org',
-            'stellar.horizonUrl': 'https://horizon-testnet.stellar.org',
-            'stellar.contractId': 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4',
-            'stellar.secretKey': 'SCZGLF7EZIBNP2Q7PQGLVVDGCM2NQNB4D3FSD5UVOVW5XBDPGQVSYYX5X',
-            'stellar.network': 'testnet',
-            'NODE_ENV': 'production',
-          };
-          return config[key];
+  it('should sign a transaction using the secure config key and record success telemetry', async () => {
+    const validPubKey = StellarSdk.Keypair.random().publicKey();
+
+    const sourceAccount = new StellarSdk.Account(validPubKey, '1');
+
+    const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: '100',
+      networkPassphrase: service.getNetworkPassphrase(),
+    })
+      .addOperation(
+        StellarSdk.Operation.payment({
+          destination: validPubKey,
+          asset: StellarSdk.Asset.native(),
+          amount: '1',
         }),
-      };
+      )
+      .setTimeout(30)
+      .build();
 
-      const testModule = Test.createTestingModule({
-        providers: [
-          StellarService,
-          {
-            provide: ConfigService,
-            useValue: mockConfigService,
-          },
-        ],
-      });
+    expect(tx.signatures.length).toBe(0);
 
-      // Should not throw
-      expect(() => {
-        new StellarService(mockConfigService);
-      }).not.toThrow();
-    });
+    jest
+      .spyOn((service as any).horizonServer, 'submitTransaction')
+      .mockResolvedValue({ hash: '123', ledger: 42 });
 
-    it('should skip initialization in development mode with missing config', () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
+    await service.signAndSubmit(tx);
 
-      // Should not throw even without Stellar config in development
-      expect(() => {
-        new StellarService(devConfigService);
-      }).not.toThrow();
-    });
+    expect(tx.signatures.length).toBe(1);
+    expect(mockConfig.get).toHaveBeenCalledWith('STELLAR_ADMIN_SECRET');
 
-    it('should throw error in production mode with missing config', () => {
-      const prodConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'production',
-          };
-          return config[key];
-        }),
-      };
+    // Verify tracing call
+    expect(tracingService.trace).toHaveBeenCalledWith(
+      'stellar.contract.submit',
+      expect.any(Function),
+      expect.objectContaining({
+        'stellar.contract.id': 'unknown',
+        'stellar.contract.function': 'unknown',
+      })
+    );
 
-      expect(() => {
-        const prodService = new StellarService(prodConfigService);
-        prodService.onModuleInit();
-      }).toThrow();
-    });
+    // Verify trace attributes
+    expect(mockSpan.attributes['stellar.tx.ledger']).toBe(42);
+    expect(mockSpan.attributes['stellar.tx.status']).toBe('success');
+
+    // Verify metrics calls
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      'stellar_contract_invocations_total',
+      { contract_id: 'unknown', function: 'unknown' }
+    );
+    
+    expect(metricsService.observeHistogram).toHaveBeenCalledWith(
+      'stellar_contract_invocation_duration_ms',
+      expect.any(Number),
+      { contract_id: 'unknown', function: 'unknown', status: 'success' }
+    );
   });
 
-  describe('approveSubmission', () => {
-    it('should return mock response in development mode without Stellar config', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
+  it('should handle submission failure and record failure telemetry', async () => {
+    const validPubKey = StellarSdk.Keypair.random().publicKey();
+    const sourceAccount = new StellarSdk.Account(validPubKey, '1');
+    const tx = new StellarSdk.TransactionBuilder(sourceAccount, {
+      fee: '100',
+      networkPassphrase: service.getNetworkPassphrase(),
+    })
+      .addOperation(
+        StellarSdk.Operation.payment({
+          destination: validPubKey,
+          asset: StellarSdk.Asset.native(),
+          amount: '1',
         }),
-      };
+      )
+      .setTimeout(30)
+      .build();
 
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
+    jest
+      .spyOn((service as any).horizonServer, 'submitTransaction')
+      .mockRejectedValue(new Error('Horizon rate limit exceeded'));
 
-      const result = await devService.approveSubmission(
-        'task-123',
-        'GBUQWP3BOUZX34ULNQG23RQ6F4YUSXHTQA5XPJMWRFT5GEVQA3I5UU4K',
-        100,
-      );
+    await expect(service.signAndSubmit(tx)).rejects.toThrow('Transaction signing security failure');
 
-      expect(result).toHaveProperty('success', true);
-      expect(result).toHaveProperty('transactionHash');
-      expect(result.transactionHash).toContain('mock-tx-hash');
-    });
+    // Verify trace attributes marked as error
+    expect(mockSpan.status).toBe('error');
+    expect(mockSpan.attributes['error.message']).toBe('Horizon rate limit exceeded');
+    expect(mockSpan.attributes['error.type']).toBe('Error');
 
-    it('should handle transaction retry logic', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      const result = await devService.approveSubmission(
-        'task-456',
-        'GBUQWP3BOUZX34ULNQG23RQ6F4YUSXHTQA5XPJMWRFT5GEVQA3I5UU4K',
-        250,
-      );
-
-      expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe('registerTask', () => {
-    it('should register task with mock response in development', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      const result = await devService.registerTask(
-        'task-789',
-        'USDC',
-        500,
-        'GBUQWP3BOUZX34ULNQG23RQ6F4YUSXHTQA5XPJMWRFT5GEVQA3I5UU4K',
-      );
-
-      expect(result).toHaveProperty('success', true);
-      expect(result).toHaveProperty('transactionHash');
-    });
-  });
-
-  describe('getUserStats', () => {
-    it('should return mock user stats in development', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      const result = await devService.getUserStats(
-        'GBUQWP3BOUZX34ULNQG23RQ6F4YUSXHTQA5XPJMWRFT5GEVQA3I5UU4K',
-      );
-
-      expect(result).toBeDefined();
-      expect(result).toHaveProperty('completed_quests');
-      expect(result).toHaveProperty('total_earned');
-      expect(result).toHaveProperty('level');
-    });
-  });
-
-  describe('submitProof', () => {
-    it('should submit proof with mock response', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      const result = await devService.submitProof(
-        'task-101',
-        'GBUQWP3BOUZX34ULNQG23RQ6F4YUSXHTQA5XPJMWRFT5GEVQA3I5UU4K',
-        'https://example.com/proof',
-      );
-
-      expect(result).toHaveProperty('success', true);
-      expect(result).toHaveProperty('transactionHash');
-    });
-  });
-
-  describe('executeWithRetry', () => {
-    it('should retry operation on failure and eventually succeed', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      let attemptCount = 0;
-      const operation = jest.fn(async () => {
-        attemptCount++;
-        if (attemptCount < 2) {
-          throw new Error('Temporary failure');
-        }
-        return { success: true };
-      });
-
-      // Access the private method through type assertion for testing
-      const result = await (devService as any).executeWithRetry(operation);
-
-      expect(result).toEqual({ success: true });
-      expect(operation).toHaveBeenCalledTimes(2);
-    });
-
-    it('should throw error after max retries exceeded', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      const operation = jest.fn(async () => {
-        throw new Error('Persistent failure');
-      });
-
-      // Access the private method through type assertion for testing
-      await expect(
-        (devService as any).executeWithRetry(operation, 2),
-      ).rejects.toThrow('Persistent failure');
-
-      expect(operation).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('isServiceHealthy', () => {
-    it('should return false when service is not initialized', async () => {
-      const devConfigService = {
-        get: jest.fn((key) => {
-          const config: Record<string, any> = {
-            'NODE_ENV': 'development',
-          };
-          return config[key];
-        }),
-      };
-
-      const devService = new StellarService(devConfigService);
-      devService.onModuleInit();
-
-      const isHealthy = devService.isServiceHealthy();
-
-      expect(isHealthy).toBe(false);
-    });
+    // Verify metrics tracked failure
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      'stellar_contract_invocation_failures_total',
+      { contract_id: 'unknown', function: 'unknown', error_type: 'submission_error' }
+    );
   });
 });

@@ -1,6 +1,7 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { AppLoggerService } from '../logger/logger.service';
 import { MetricsService } from './metrics.service';
+import { DatabasePoolMonitorService } from '../../modules/health/services/database-pool-monitor.service';
 
 export interface AlertRule {
   /** Unique rule identifier */
@@ -29,6 +30,7 @@ export class AlertService implements OnModuleInit, OnModuleDestroy {
   /** Rolling counters reset every evaluation window (60 s) */
   private windowRequests = 0;
   private windowErrors = 0;
+  private windowJobFailures = 0;
 
   /** Exponential moving average for p95 latency estimation */
   private emaLatencyMs = 0;
@@ -36,6 +38,7 @@ export class AlertService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly logger: AppLoggerService,
     private readonly metrics: MetricsService,
+    @Optional() private readonly poolMonitor?: DatabasePoolMonitorService,
   ) {}
 
   onModuleInit(): void {
@@ -78,6 +81,11 @@ export class AlertService implements OnModuleInit, OnModuleDestroy {
     this.metrics.incrementCounter('http_requests_total');
     if (isError) this.metrics.incrementCounter('http_errors_total');
     this.metrics.observeHistogram('http_request_duration_ms', durationMs);
+  }
+
+  recordJobFailure(): void {
+    this.windowJobFailures++;
+    this.metrics.incrementCounter('job_failures_total');
   }
 
   /** Evaluate all rules immediately (also called on a 60-second cadence). */
@@ -173,6 +181,44 @@ export class AlertService implements OnModuleInit, OnModuleDestroy {
       cooldownMs: 300_000,
       evaluate: () => process.memoryUsage().heapUsed > 900 * 1024 * 1024,
     });
+
+    // ── Database pool utilization > 90 % ───────────────────────────────────
+    if (this.poolMonitor) {
+      this.registerRule({
+        name: 'db_pool_high_utilization',
+        description: 'Database connection pool utilization exceeds 90 %',
+        severity: 'critical',
+        cooldownMs: 300_000,
+        evaluate: () => this.poolMonitor!.getUtilizationPercentage() > 90,
+      });
+
+      // ── Database pool utilization > 75 % ─────────────────────────────────
+      this.registerRule({
+        name: 'db_pool_elevated_utilization',
+        description: 'Database connection pool utilization exceeds 75 %',
+        severity: 'warning',
+        cooldownMs: 300_000,
+        evaluate: () => this.poolMonitor!.getUtilizationPercentage() > 75,
+      });
+
+      // ── Database pool waiting queue growing ─────────────────────────────
+      this.registerRule({
+        name: 'db_pool_waiting_queue_growth',
+        description: 'Database pool waiting queue consistently elevated (> 5 requests)',
+        severity: 'warning',
+        cooldownMs: 120_000,
+        evaluate: () => this.poolMonitor!.getPoolStats().waitingRequests > 5,
+      });
+
+      // ── Database connection acquisition latency abnormal ─────────────────
+      this.registerRule({
+        name: 'db_pool_slow_acquisition',
+        description: 'Database connection acquisition time exceeds 500 ms average',
+        severity: 'warning',
+        cooldownMs: 180_000,
+        evaluate: () => this.poolMonitor!.getAverageAcquisitionTime() > 500,
+      });
+    }
   }
 
   private startPeriodicEvaluation(): void {
@@ -181,6 +227,7 @@ export class AlertService implements OnModuleInit, OnModuleDestroy {
       // Reset rolling window counters
       this.windowRequests = 0;
       this.windowErrors = 0;
+      this.windowJobFailures = 0;
     }, 60_000);
 
     this.checkInterval.unref();

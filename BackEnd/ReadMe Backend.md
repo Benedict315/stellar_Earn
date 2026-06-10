@@ -127,6 +127,7 @@ JWT_EXPIRATION=7d
 STELLAR_NETWORK=testnet
 SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 HORIZON_URL=https://horizon-testnet.stellar.org
+STELLAR_FINALITY_CONFIRMATIONS=3
 
 # Contract & Wallet
 CONTRACT_ID=<your-deployed-contract-id>
@@ -543,6 +544,8 @@ bun run start:prod
 - Verify `DATABASE_URL` is correct
 - Ensure PostgreSQL server is running
 - Check firewall rules and network connectivity
+- Monitor connection pool metrics via `/health/pool` endpoint
+- Review [DATABASE_POOL_MONITORING.md](./DATABASE_POOL_MONITORING.md) for detailed pool diagnostics
 
 ### Stellar/Soroban Errors
 

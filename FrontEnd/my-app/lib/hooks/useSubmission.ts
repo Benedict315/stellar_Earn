@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   createSubmission,
   uploadProofFile,
@@ -14,7 +14,13 @@ import {
   type ValidationError,
 } from '../validation/submission';
 
-export type SubmissionStep = 'type' | 'proof' | 'preview' | 'submitting' | 'success' | 'error';
+export type SubmissionStep =
+  | 'type'
+  | 'proof'
+  | 'preview'
+  | 'submitting'
+  | 'success'
+  | 'error';
 
 interface UseSubmissionOptions {
   questId: string;
@@ -68,7 +74,13 @@ const initialFormData: SubmissionFormData = {
   additionalNotes: '',
 };
 
-const stepOrder: SubmissionStep[] = ['type', 'proof', 'preview', 'submitting', 'success'];
+const stepOrder: SubmissionStep[] = [
+  'type',
+  'proof',
+  'preview',
+  'submitting',
+  'success',
+];
 
 export function useSubmission({
   questId,
@@ -84,10 +96,11 @@ export function useSubmission({
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
-  const [submissionResponse, setSubmissionResponse] = useState<SubmissionResponse | null>(
-    null
-  );
+  const [submissionResponse, setSubmissionResponse] =
+    useState<SubmissionResponse | null>(null);
   const [submissionError, setSubmissionError] = useState<Error | null>(null);
+  const [walletConnectedState, setWalletConnectedState] =
+    useState<boolean>(false);
 
   // Check if wallet is connected - make a profile request to verify authentication
   const isWalletConnected = useCallback(async () => {
@@ -100,8 +113,15 @@ export function useSubmission({
     }
   }, []);
 
+  useEffect(() => {
+    isWalletConnected().then(setWalletConnectedState);
+  }, [isWalletConnected]);
+
   const updateField = useCallback(
-    <K extends keyof SubmissionFormData>(field: K, value: SubmissionFormData[K]) => {
+    <K extends keyof SubmissionFormData>(
+      field: K,
+      value: SubmissionFormData[K]
+    ) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
       // Clear errors for the field being updated
       setErrors((prev) => prev.filter((e) => e.field !== field));
@@ -120,7 +140,9 @@ export function useSubmission({
     if (currentStep === 'type') {
       // Just need a proof type selected
       if (!formData.proofType) {
-        setErrors([{ field: 'proofType', message: 'Please select a proof type' }]);
+        setErrors([
+          { field: 'proofType', message: 'Please select a proof type' },
+        ]);
         return false;
       }
       setErrors([]);
@@ -165,7 +187,11 @@ export function useSubmission({
 
   const canGoBack = useCallback((): boolean => {
     const currentIndex = stepOrder.indexOf(currentStep);
-    return currentIndex > 0 && currentStep !== 'submitting' && currentStep !== 'success';
+    return (
+      currentIndex > 0 &&
+      currentStep !== 'submitting' &&
+      currentStep !== 'success'
+    );
   }, [currentStep]);
 
   const goToNextStep = useCallback(() => {
@@ -232,14 +258,18 @@ export function useSubmission({
 
       setSubmitProgress(90);
 
-      const response = await createSubmission(submissionData, sanitizedData.file);
+      const response = await createSubmission(
+        submissionData,
+        sanitizedData.file
+      );
 
       setSubmitProgress(100);
       setSubmissionResponse(response);
       setCurrentStep('success');
       onSuccess?.(response);
     } catch (error) {
-      const err = error instanceof Error ? error : new Error('Submission failed');
+      const err =
+        error instanceof Error ? error : new Error('Submission failed');
       setSubmissionError(err);
       setCurrentStep('error');
       onError?.(err);
@@ -277,6 +307,6 @@ export function useSubmission({
     submissionResponse,
     submissionError,
     reset,
-    isWalletConnected: isWalletConnected(),
+    isWalletConnected: walletConnectedState,
   };
 }

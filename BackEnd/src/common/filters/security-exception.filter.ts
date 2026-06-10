@@ -36,7 +36,7 @@ export class SecurityExceptionFilter implements ExceptionFilter {
       
       if (typeof responseObj === 'string') {
         message = responseObj;
-      } else if (typeof responseObj === 'object' && responseObj !== null) {
+      } else if (responseObj && typeof responseObj === 'object') {
         message = (responseObj as any).message || message;
         errorDetails = (responseObj as any).error || null;
       }
@@ -103,10 +103,10 @@ export class SecurityExceptionFilter implements ExceptionFilter {
       [HttpStatus.FORBIDDEN]: 'Access forbidden',
       [HttpStatus.UNAUTHORIZED]: 'Unauthorized access',
       [HttpStatus.TOO_MANY_REQUESTS]: 'Too many requests',
-    };
+    } as const;
 
-    if (securityErrorMessages[status]) {
-      return securityErrorMessages[status];
+    if (securityErrorMessages[status as keyof typeof securityErrorMessages]) {
+      return securityErrorMessages[status as keyof typeof securityErrorMessages];
     }
 
     // For other errors, keep the original message but sanitize if needed

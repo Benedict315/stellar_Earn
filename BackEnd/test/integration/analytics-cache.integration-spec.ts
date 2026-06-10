@@ -1,14 +1,18 @@
-import { Test, TestingModule } from '@nestjs/testing';
+﻿import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { AnalyticsModule } from '../../../src/modules/analytics/analytics.module';
-import { CacheModule } from '../../../src/modules/cache/cache.module';
-import { AnalyticsService } from '../../../src/modules/analytics/analytics.service';
-import { CacheService } from '../../../src/modules/cache/cache.service';
-import { User } from '../../../src/modules/users/entities/user.entity';
-import { Quest } from '../../../src/modules/quests/entities/quest.entity';
-import { Submission } from '../../../src/modules/submissions/entities/submission.entity';
+import { AnalyticsModule } from '#src/modules/analytics/analytics.module';
+import { CacheModule } from '#src/modules/cache/cache.module';
+import {
+  AnalyticsService,
+  getAnalyticsService,
+} from '#src/modules/analytics/analytics.service';
+import { AnalyticsService } from '#src/modules/analytics/analytics.service';
+import { CacheService } from '#src/modules/cache/cache.service';
+import { User } from '#src/modules/users/entities/user.entity';
+import { Quest } from '#src/modules/quests/entities/quest.entity';
+import { Submission } from '#src/modules/submissions/entities/submission.entity';
 
 describe('Analytics-Cache Integration', () => {
   let module: TestingModule;
@@ -39,6 +43,7 @@ describe('Analytics-Cache Integration', () => {
       ],
     }).compile();
 
+    analyticsService = getAnalyticsService();
     analyticsService = module.get<AnalyticsService>(AnalyticsService);
     cacheService = module.get<CacheService>(CacheService);
   });
@@ -231,4 +236,5 @@ describe('Analytics-Cache Integration', () => {
       }
     });
   });
+});
 });

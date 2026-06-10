@@ -11,18 +11,38 @@ import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
 import { QueryQuestsDto } from './dto/query-quests.dto';
 
-import {
-  QuestResponseDto,
-  PaginatedQuestsResponseDto,
-  QuestCreatedEvent,
-  QuestUpdatedEvent,
-  QuestDeletedEvent,
-} from './dto';
+import { QuestResponseDto } from './dto/quest-response.dto';
+import { PaginatedQuestsResponseDto } from './dto/quest-response.dto';
+class QuestCreatedEvent {
+  constructor(
+    public id: string,
+    public title: string,
+    public createdBy: string,
+    public rewardAmount: string,
+  ) {}
+}
+
+class QuestUpdatedEvent {
+  constructor(
+    public id: string,
+    public title: string,
+    public updatedBy: string,
+  ) {}
+}
+
+class QuestDeletedEvent {
+  constructor(
+    public id: string,
+    public title: string,
+  ) {}
+}
+
 import { CacheService } from '../cache/cache.service';
 import { CACHE_KEYS, CACHE_TTL } from '../../config/cache.config';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ModerationService } from '../moderation/moderation.service';
+import { QuotaService } from '../quota/quota.service';
 
 @Injectable()
 export class QuestsService {
@@ -32,6 +52,7 @@ export class QuestsService {
     private readonly cacheService: CacheService,
     private readonly eventEmitter: EventEmitter2,
     private readonly moderationService: ModerationService,
+    private readonly quotaService: QuotaService,
   ) { }
 
   async create(
@@ -43,6 +64,8 @@ export class QuestsService {
         throw new BadRequestException('End date must be after start date');
       }
     }
+
+    await this.quotaService.enforceQuestCreationQuota(creatorAddress);
 
     const quest = this.questRepository.create({
       ...createQuestDto,
@@ -87,103 +110,80 @@ export class QuestsService {
     return QuestResponseDto.fromEntity(savedQuest);
   }
 
-  async findAll(queryDto: QueryQuestsDto): Promise<PaginatedQuestsResponseDto> {
-    const {
-      status,
-      creatorAddress,
-      minReward,
-      maxReward,
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC',
-    } = queryDto;
+async findAll(queryDto: QueryQuestsDto): Promise<PaginatedQuestsResponseDto> {
+  const {
+    status,
+    createdBy,
+    search,
+    category,
+    cursor,
+    limit = 10,
+  } = queryDto;
 
-    // Generate cache key based on query parameters
-    const cacheKey = `${CACHE_KEYS.QUESTS}:${JSON.stringify({
-      status,
-      creatorAddress,
-      minReward,
-      maxReward,
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-    })}`;
+  // Updated cache key (removed page-based params)
+  const cacheKey = `${CACHE_KEYS.QUESTS}:${JSON.stringify({
+    status,
+    createdBy,
+    search,
+    category,
+    cursor,
+    limit,
+  })}`;
 
-    // Try to get from cache first
-    const cached =
-      await this.cacheService.get<PaginatedQuestsResponseDto>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const where: FindOptionsWhere<Quest> = {};
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (creatorAddress) {
-      where.createdBy = creatorAddress;
-    }
-
-    const queryBuilder = this.questRepository.createQueryBuilder('quest');
-
-    // Exclude soft-deleted quests by default
-    queryBuilder.andWhere('quest.deletedAt IS NULL');
-
-    if (status) {
-      queryBuilder.andWhere('quest.status = :status', { status });
-    }
-
-    if (creatorAddress) {
-      queryBuilder.andWhere('quest.createdBy = :creatorAddress', {
-        creatorAddress,
-      });
-    }
-
-    const allowedSortFields = [
-      'createdAt',
-      'updatedAt',
-      'title',
-      'rewardAmount',
-      'status',
-    ];
-    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
-
-    queryBuilder.orderBy(`quest.${sortField}`, sortOrder);
-
-    if (minReward !== undefined) {
-      queryBuilder.andWhere('quest.rewardAmount >= :minReward', { minReward });
-    }
-
-    if (maxReward !== undefined) {
-      queryBuilder.andWhere('quest.rewardAmount <= :maxReward', { maxReward });
-    }
-
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
-
-    const [quests, total] = await queryBuilder.getManyAndCount();
-
-    const result = {
-      data: quests.map((quest) => QuestResponseDto.fromEntity(quest)),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
-
-    // Cache the result
-    await this.cacheService.set(
-      cacheKey,
-      result,
-      CACHE_TTL.MEDIUM * 1000,
-    );
-
-    return result;
+  const cached =
+    await this.cacheService.get<PaginatedQuestsResponseDto>(cacheKey);
+  if (cached) {
+    return cached;
   }
+
+  const queryBuilder = this.questRepository.createQueryBuilder('quest');
+
+  // Filters
+  if (status) {
+    queryBuilder.andWhere('quest.status = :status', { status });
+  }
+
+  if (createdBy) {
+    queryBuilder.andWhere('quest.createdBy = :createdBy', {
+      createdBy,
+    });
+  }
+
+  // ⚠️ Force consistent ordering for cursor pagination
+  queryBuilder.orderBy('quest.createdAt', 'DESC');
+
+  // Cursor condition
+  if (cursor) {
+    queryBuilder.andWhere('quest.createdAt < :cursor', { cursor });
+  }
+
+  // Fetch one extra record to determine if there's a next page
+  queryBuilder.take(limit + 1);
+
+  const quests = await queryBuilder.getMany();
+
+  const hasNextPage = quests.length > limit;
+
+  const data = hasNextPage ? quests.slice(0, -1) : quests;
+
+  const nextCursor = hasNextPage
+    ? data[data.length - 1].createdAt.toISOString()
+    : undefined;
+
+  const result: PaginatedQuestsResponseDto = {
+    data: data.map((quest) => QuestResponseDto.fromEntity(quest)),
+    nextCursor,
+    limit,
+  };
+
+  await this.cacheService.set(
+    cacheKey,
+    result,
+    CACHE_TTL.MEDIUM * 1000,
+  );
+
+  return result;
+}
 
   async findOne(id: string): Promise<QuestResponseDto> {
     const cacheKey = `${CACHE_KEYS.QUEST_DETAIL}:${id}`;
@@ -267,7 +267,7 @@ export class QuestsService {
     // Emit quest updated event
     this.eventEmitter.emit(
       'quest.updated',
-      new QuestUpdatedEvent(id, updateQuestDto as any),
+      new QuestUpdatedEvent(id, updateQuestDto.title || 'Untitled', 'system'),
     );
 
     // Invalidate caches

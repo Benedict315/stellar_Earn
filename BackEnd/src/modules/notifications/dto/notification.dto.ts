@@ -6,12 +6,19 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   NotificationType,
   NotificationPriority,
 } from '../entities/notification.entity';
+
+
+import { Type } from 'class-transformer';
+import { CursorPaginationDto } from '../../../common/dto/pagination.dto';
 
 export class CreateNotificationDto {
   @ApiProperty({
@@ -114,4 +121,18 @@ export class NotificationResponseDto {
 
   @ApiProperty()
   updatedAt: Date;
+}
+
+export class QueryNotificationsDto extends CursorPaginationDto {
+  @ApiPropertyOptional({
+    description: 'Items per page',
+    example: 20,
+    default: 20,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
 }

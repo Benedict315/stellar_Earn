@@ -2,7 +2,14 @@ import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import * as winston from 'winston';
 import 'winston-daily-rotate-file';
 
-export type LogLevel = 'error' | 'warn' | 'info' | 'http' | 'verbose' | 'debug' | 'silly';
+export type LogLevel =
+  | 'error'
+  | 'warn'
+  | 'info'
+  | 'http'
+  | 'verbose'
+  | 'debug'
+  | 'silly';
 
 export interface LoggerConfig {
   level: LogLevel;
@@ -12,6 +19,8 @@ export interface LoggerConfig {
   maxFileSize: string;
   maxFiles: string;
   enablePerformanceLogs: boolean;
+  enableQueryLogs: boolean;
+  queryLogLevel: LogLevel;
 }
 
 export const getLoggerConfig = (): LoggerConfig => ({
@@ -22,6 +31,8 @@ export const getLoggerConfig = (): LoggerConfig => ({
   maxFileSize: process.env.LOG_MAX_SIZE || '20m',
   maxFiles: process.env.LOG_MAX_FILES || '14d',
   enablePerformanceLogs: process.env.LOG_PERFORMANCE !== 'false',
+  enableQueryLogs: process.env.DB_QUERY_LOGGING === 'true' || process.env.NODE_ENV === 'development',
+  queryLogLevel: (process.env.DB_QUERY_LOG_LEVEL as LogLevel) || 'debug',
 });
 
 const addCorrelationId = winston.format((info) => {
@@ -54,7 +65,9 @@ const consoleFormat = winston.format.combine(
   }),
 );
 
-export const createLoggerConfig = (config?: Partial<LoggerConfig>): winston.LoggerOptions => {
+export const createLoggerConfig = (
+  config?: Partial<LoggerConfig>,
+): winston.LoggerOptions => {
   const finalConfig = { ...getLoggerConfig(), ...config };
   const transports: winston.transport[] = [];
 
@@ -101,6 +114,20 @@ export const createLoggerConfig = (config?: Partial<LoggerConfig>): winston.Logg
           maxSize: finalConfig.maxFileSize,
           maxFiles: '7d',
           level: 'info',
+          format: structuredFormat,
+        }),
+      );
+    }
+
+    if (finalConfig.enableQueryLogs) {
+      transports.push(
+        new winston.transports.DailyRotateFile({
+          filename: `${finalConfig.logDir}/queries-%DATE%.log`,
+          datePattern: 'YYYY-MM-DD',
+          zippedArchive: true,
+          maxSize: finalConfig.maxFileSize,
+          maxFiles: '3d',
+          level: finalConfig.queryLogLevel,
           format: structuredFormat,
         }),
       );

@@ -435,14 +435,6 @@
                           "map": [
                             {
                               "key": {
-                                "symbol": "badges"
-                              },
-                              "val": {
-                                "vec": []
-                              }
-                            },
-                            {
-                              "key": {
                                 "symbol": "level"
                               },
                               "val": {

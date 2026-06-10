@@ -76,13 +76,17 @@ fn test_batch_approval_valid_bounds() {
 
     // Batch approve
     let mut approvals = Vec::new(&env);
+    let mut submissions1 = Vec::new(&env);
+    submissions1.push_back(submitter1.clone());
     approvals.push_back(BatchApprovalInput {
         quest_id: quest_id1.clone(),
-        submitter: submitter1.clone(),
+        submissions: submissions1,
     });
+    let mut submissions2 = Vec::new(&env);
+    submissions2.push_back(submitter2.clone());
     approvals.push_back(BatchApprovalInput {
         quest_id: quest_id2.clone(),
-        submitter: submitter2.clone(),
+        submissions: submissions2,
     });
 
     // Should succeed - all indices are valid

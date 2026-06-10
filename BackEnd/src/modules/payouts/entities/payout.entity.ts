@@ -62,6 +62,12 @@ export class Payout {
   @Column({ type: 'int', nullable: true })
   stellarLedger: number | null;
 
+  @Column({ type: 'int', default: 0 })
+  settlementConfirmations: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  settlementConfirmedAt: Date | null;
+
   @Column({ type: 'text', nullable: true })
   failureReason: string | null;
 

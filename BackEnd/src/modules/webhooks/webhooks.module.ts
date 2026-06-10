@@ -8,14 +8,22 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Payout } from '../payouts/entities/payout.entity';
 import { MultiSigTransaction } from '../stellar/multisig/entities/multisig-transaction.entity';
 import { MultiSigWallet } from '../stellar/multisig/entities/multisig-wallet.entity';
-import { MultiSigWalletService } from '../stellar/multisig/services/multisig-wallet.service';
-import { MultiSigPayoutService } from '../stellar/multisig/services/multisig-payout.service';
+import { MultiSigModule } from '../stellar/multisig/multisig.module';
+import { ExecutionTraceModule } from '../trace/execution-trace.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MultiSigTransaction, Payout, MultiSigWallet])],
+  imports: [
+    TypeOrmModule.forFeature([MultiSigTransaction, Payout, MultiSigWallet]),
+    ExecutionTraceModule,
+    MultiSigModule,
+  ],
   controllers: [WebhooksController],
-  providers: [WebhooksService, GithubHandler, ApiHandler, MultiSigWebhookHandler, MultiSigPayoutService, MultiSigWalletService],
+  providers: [
+    WebhooksService,
+    GithubHandler,
+    ApiHandler,
+    MultiSigWebhookHandler,
+  ],
   exports: [WebhooksService],
 })
 export class WebhooksModule {}
-

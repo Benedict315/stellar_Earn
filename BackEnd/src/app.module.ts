@@ -1,100 +1,81 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ApiVersionGuard } from './common/guards/versioning.guard';
-import { VersioningInterceptor } from './common/interceptors/versioning.interceptor';
-
-import { WebhooksModule } from './modules/webhooks/webhooks.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { PayoutsModule } from './modules/payouts/payouts.module';
-import { QuestsModule } from './modules/quests/quests.module';
-import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { SubmissionsModule } from './modules/submissions/submissions.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { JobsModule } from './modules/jobs/jobs.module';
-import { EmailModule } from './modules/email/email.module';
-import { UsersModule } from './modules/users/users.module';
-import { ModerationModule } from './modules/moderation/moderation.module';
-import { WebsocketModule } from './modules/websocket/websocket.module';
-
-import { dataSourceOptions } from './database/data-source';
-import moderationConfig from './config/moderation.config';
-
-import { LoggerModule } from './common/logger/logger.module';
-import { LoggerMiddleware } from './common/middleware/logger.middleware';
-import { TracingMiddleware } from './common/tracing/tracing.middleware';
-import { CacheModule } from './modules/cache/cache.module';
-import { HealthModule } from './modules/health/health.module';
-import { throttlerConfig } from './config/throttler.config';
-import { AppThrottlerGuard } from './common/guards/throttler.guard';
-import { EventsModule } from './events/events.module';
+import { AppLoggerService } from './common/logger/logger.service';
 import { SecurityMiddleware } from './common/middleware/security.middleware';
-import { CsrfGuard } from './common/guards/csrf.guard';
+import { dataSourceOptions } from './database/data-source';
+import { LoggerModule } from './common/logger/logger.module';
+
+import { AdminModule } from './modules/admin/admin.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { CacheModule as AppCacheModule } from './modules/cache/cache.module';
+import { EmailModule } from './modules/email/email.module';
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
+import { HealthModule } from './modules/health/health.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { ModerationModule } from './modules/moderation/moderation.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PayoutsModule } from './modules/payouts/payouts.module';
+import { PostmortemModule } from './modules/postmortems/postmortem.module';
+import { QueryMonitoringModule } from './modules/query-monitoring/query-monitoring.module';
+import { QuestsModule } from './modules/quests/quests.module';
+import { QuotaModule } from './modules/quota/quota.module';
+import { StellarModule } from './modules/stellar/stellar.module';
+import { MultiSigModule } from './modules/stellar/multisig/multisig.module';
+import { SubmissionsModule } from './modules/submissions/submissions.module';
+import { ExecutionTraceModule } from './modules/trace/execution-trace.module';
+import { UsersModule } from './modules/users/users.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { WebsocketModule } from './modules/websocket/websocket.module';
+import { TraceInterceptor } from './modules/trace/trace.interceptor';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
-    LoggerModule.forRoot({
-      isGlobal: true,
-      enableInterceptor: true,
-      enableErrorFilter: true,
-    }),
-    EventsModule,
-    WebhooksModule,
-    CacheModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-      load: [moderationConfig],
     }),
-    TypeOrmModule.forRoot({
-      ...dataSourceOptions,
-      autoLoadEntities: true,
-    }),
-    ThrottlerModule.forRootAsync(throttlerConfig),
-    HealthModule,
-    AuthModule,
-    PayoutsModule,
+    TypeOrmModule.forRoot(dataSourceOptions),
+    LoggerModule.forRoot(),
+    EventsModule,
+    AdminModule,
     AnalyticsModule,
-    QuestsModule,
-    SubmissionsModule,
-    NotificationsModule,
-    JobsModule,
+    AuthModule,
+    AppCacheModule,
     EmailModule,
-    UsersModule,
+    ExecutionTraceModule,
+    FeatureFlagsModule,
+    HealthModule,
+    JobsModule,
     ModerationModule,
+    MultiSigModule,
+    NotificationsModule,
+    PayoutsModule,
+    PostmortemModule,
+    QueryMonitoringModule,
+    QuestsModule,
+    QuotaModule,
+    StellarModule,
+    SubmissionsModule,
+    UsersModule,
+    WebhooksModule,
     WebsocketModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    AppLoggerService,
     SecurityMiddleware,
     {
-      provide: APP_GUARD,
-      useClass: AppThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: CsrfGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: ApiVersionGuard,
-    },
-    {
       provide: APP_INTERCEPTOR,
-      useClass: VersioningInterceptor,
+      useClass: TraceInterceptor,
     },
   ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer): void {
-    // TracingMiddleware must run first: it sets the AsyncLocalStorage TraceContext
-    // that LoggerMiddleware and all subsequent handlers read from.
-    consumer.apply(TracingMiddleware, LoggerMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}

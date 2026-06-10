@@ -2,12 +2,13 @@
  * Axios-based HTTP client for the StellarEarn API.
  *
  * Features:
- *  - Uses httpOnly cookies for secure token storage (no localStorage)
- *  - Transparent JWT access-token refresh on 401 (with request queuing)
- *  - Configurable retry with exponential back-off for network / 5xx errors
- *  - Per-request cancellation via AbortController
- *  - 30-second default timeout
- *  - Typed error transformation
+ * - Uses httpOnly cookies for secure token storage (no localStorage)
+ * - Transparent JWT access-token refresh on 401 (with request queuing)
+ * - Configurable retry with exponential back-off for network / 5xx errors
+ * - Per-request cancellation via AbortController
+ * - 30-second default timeout
+ * - Typed error transformation
+ * - Global offline fallback and API unreachable detection
  */
 
 import axios, {
@@ -20,14 +21,15 @@ import {
   ERROR_CODES,
   type AppError,
 } from '@/lib/utils/error-handler';
+import { mapApiError, inferDomainFromUrl } from '@/lib/api/api-error-mapper';
 import type { ApiErrorResponse, AuthTokens } from '@/lib/types/api.types';
+import { env } from '@/lib/config/env';
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+const BASE_URL = env.apiBaseUrl();
 const API_VERSION = 'v1';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 3;
@@ -41,9 +43,64 @@ function isClient(): boolean {
   return typeof window !== 'undefined';
 }
 
+const ACCESS_TOKEN_KEY = 'stellar_earn_access_token';
+const REFRESH_TOKEN_KEY = 'stellar_earn_refresh_token';
+
+// Add these helper functions right before tokenManager
+
+function isValidJwtToken(token: string | null): boolean {
+  if (!token || typeof token !== 'string') return false;
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  if (parts.some((part) => part.length === 0)) return false;
+  return true;
+}
+
+function safeGetToken(key: string): string | null {
+  if (!isClient()) return null;
+  try {
+    const token = window.localStorage.getItem(key);
+    if (!token) return null;
+    if (!isValidJwtToken(token)) {
+      console.warn(`[tokenManager] Invalid token format for key: ${key}`);
+      window.localStorage.removeItem(key);
+      return null;
+    }
+    return token;
+  } catch (error) {
+    console.error(`[tokenManager] Failed to read token:`, error);
+    return null;
+  }
+}
+
+function safeSetToken(key: string, token: string): void {
+  if (!isClient()) return;
+  try {
+    window.localStorage.setItem(key, token);
+  } catch (error) {
+    console.error(`[tokenManager] Failed to save token:`, error);
+  }
+}
+
 export const tokenManager = {
+  getAccessToken(): string | null {
+    return safeGetToken(ACCESS_TOKEN_KEY);
+  },
+  getRefreshToken(): string | null {
+    return safeGetToken(REFRESH_TOKEN_KEY);
+  },
+  setTokens(tokens: AuthTokens): void {
+    safeSetToken(ACCESS_TOKEN_KEY, tokens.accessToken);
+    safeSetToken(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  },
   clearTokens(): void {
     if (!isClient()) return;
+    try {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    } catch (error) {
+      console.error('[tokenManager] Failed to clear tokens:', error);
+    }
   },
 };
 
@@ -71,24 +128,18 @@ function processQueue(error: unknown, token: string | null = null): void {
 }
 
 // ---------------------------------------------------------------------------
-// Error transformation
+// Error transformation & Offline detection
 // ---------------------------------------------------------------------------
 
 function isAxiosError(error: unknown): error is AxiosError {
   return error !== null && typeof error === 'object' && 'isAxiosError' in error;
 }
 
-function hasApiErrorResponse(error: AxiosError): error is AxiosError<ApiErrorResponse> {
-  return error.response?.data !== undefined && 
-         typeof error.response.data === 'object' &&
-         ('statusCode' in error.response.data || 'message' in error.response.data);
-}
-
 function transformAxiosError(error: unknown): AppError {
   if (!isAxiosError(error)) {
     // Non-Axios error
     let errorMessage = 'An unexpected error occurred';
-    
+
     if (error && typeof error === 'object') {
       if ('message' in error) {
         errorMessage = String((error as { message: unknown }).message);
@@ -96,57 +147,52 @@ function transformAxiosError(error: unknown): AppError {
     } else if (typeof error === 'string') {
       errorMessage = error;
     }
-    
-    return createAppError(
-      errorMessage,
-      ERROR_CODES.SERVER_ERROR,
-      0,
-    );
+
+    return createAppError(errorMessage, ERROR_CODES.SERVER_ERROR, 0);
   }
 
   const status = error.response?.status;
-  const data = hasApiErrorResponse(error) ? error.response.data : undefined;
-
-  const message = Array.isArray(data?.message)
-    ? data.message.join('; ')
-    : (data?.message ?? error.message);
 
   if (!status) {
-    // Network / timeout error
+    const isOffline = isClient() && !window.navigator.onLine;
+    const isApiUnreachable = error.code === 'ERR_NETWORK';
+
+    if ((isOffline || isApiUnreachable) && isClient()) {
+      window.dispatchEvent(
+        new CustomEvent('network-unreachable', {
+          detail: { isOffline, originalError: error },
+        })
+      );
+    }
+
     return createAppError(
-      'Network connection failed. Please check your internet connection.',
+      isOffline
+        ? 'You are currently offline. Please check your network connection.'
+        : 'Unable to connect to the server. The API may be unreachable.',
       error.code === 'ECONNABORTED'
         ? ERROR_CODES.TIMEOUT_ERROR
         : ERROR_CODES.NETWORK_ERROR,
-      0,
+      0
     );
   }
 
-  switch (status) {
-    case 400:
-      return createAppError(message, ERROR_CODES.VALIDATION_ERROR, 400);
-    case 401:
-      return createAppError(message, ERROR_CODES.UNAUTHORIZED, 401);
-    case 403:
-      return createAppError(message, ERROR_CODES.FORBIDDEN, 403);
-    case 404:
-      return createAppError(message, ERROR_CODES.NOT_FOUND, 404);
-    case 429:
-      return createAppError(
-        'Too many requests. Please slow down.',
-        ERROR_CODES.SERVER_ERROR,
-        429,
-      );
-    default:
-      if (status >= 500) {
-        return createAppError(
-          message || 'Something went wrong on our end.',
-          ERROR_CODES.SERVER_ERROR,
-          status,
-        );
-      }
-      return createAppError(message, ERROR_CODES.SERVER_ERROR, status);
-  }
+  // Infer domain from the request URL for a contextual message
+  const url = error.config?.url ?? '';
+  const domain = inferDomainFromUrl(url);
+  const userMessage = mapApiError(status, domain);
+
+  const errorCode =
+    status === 400
+      ? ERROR_CODES.VALIDATION_ERROR
+      : status === 401
+        ? ERROR_CODES.UNAUTHORIZED
+        : status === 403
+          ? ERROR_CODES.FORBIDDEN
+          : status === 404
+            ? ERROR_CODES.NOT_FOUND
+            : ERROR_CODES.SERVER_ERROR;
+
+  return createAppError(userMessage, errorCode, status);
 }
 
 // ---------------------------------------------------------------------------
@@ -166,9 +212,13 @@ export const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    if (isClient() && !window.navigator.onLine) {
+      const offlineError = new axios.Cancel('No internet connection');
+      return Promise.reject(offlineError);
+    }
     return config;
   },
-  (error: unknown) => Promise.reject(transformAxiosError(error)),
+  (error: unknown) => Promise.reject(transformAxiosError(error))
 );
 
 // ---------------------------------------------------------------------------
@@ -185,6 +235,15 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+
+    if (
+      !error.response &&
+      (error.code === 'ERR_NETWORK' ||
+        error.code === 'ECONNABORTED' ||
+        axios.isCancel(error))
+    ) {
+      return Promise.reject(transformAxiosError(error));
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -205,11 +264,19 @@ apiClient.interceptors.response.use(
           {
             timeout: DEFAULT_TIMEOUT_MS,
             withCredentials: true,
-          },
+          }
         );
         processQueue(null, 'refreshed');
         return apiClient(originalRequest);
       } catch (refreshError) {
+        tokenManager.clearTokens();
+        if (isClient()) {
+          window.dispatchEvent(
+            new CustomEvent('session-expired', {
+              detail: { reason: 'token_refresh_failed' },
+            })
+          );
+        }
         processQueue(refreshError, null);
         return Promise.reject(refreshError);
       } finally {
@@ -218,7 +285,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(transformAxiosError(error));
-  },
+  }
 );
 
 // ---------------------------------------------------------------------------
@@ -226,7 +293,9 @@ apiClient.interceptors.response.use(
 // ---------------------------------------------------------------------------
 
 function isRetryableError(error: unknown): boolean {
-  if (!isAxiosError(error)) return false; // non-Axios errors are not retryable
+  // Non-Axios errors are generally retryable (network errors, timeouts, etc)
+  if (!isAxiosError(error)) return true;
+  if (axios.isCancel(error)) return false;
   if (!error.response) return true; // network error
   const status = error.response.status;
   return status >= 500 && status !== 501;
@@ -238,7 +307,7 @@ function isRetryableError(error: unknown): boolean {
 export async function withRetry<T>(
   fn: () => Promise<T>,
   retries: number = MAX_RETRIES,
-  delayMs: number = INITIAL_RETRY_DELAY_MS,
+  delayMs: number = INITIAL_RETRY_DELAY_MS
 ): Promise<T> {
   let attempt = 0;
   let lastError: unknown;
@@ -292,10 +361,7 @@ type RequestConfig = {
   params?: Record<string, unknown>;
 };
 
-export async function get<T>(
-  url: string,
-  config?: RequestConfig,
-): Promise<T> {
+export async function get<T>(url: string, config?: RequestConfig): Promise<T> {
   const { data } = await apiClient.get<T>(url, {
     params: config?.params,
     signal: config?.signal,
@@ -307,7 +373,7 @@ export async function get<T>(
 export async function post<T>(
   url: string,
   body?: unknown,
-  config?: RequestConfig,
+  config?: RequestConfig
 ): Promise<T> {
   const { data } = await apiClient.post<T>(url, body, {
     signal: config?.signal,
@@ -319,7 +385,7 @@ export async function post<T>(
 export async function patch<T>(
   url: string,
   body?: unknown,
-  config?: RequestConfig,
+  config?: RequestConfig
 ): Promise<T> {
   const { data } = await apiClient.patch<T>(url, body, {
     signal: config?.signal,
@@ -330,7 +396,7 @@ export async function patch<T>(
 
 export async function del<T = void>(
   url: string,
-  config?: RequestConfig,
+  config?: RequestConfig
 ): Promise<T> {
   const { data } = await apiClient.delete<T>(url, {
     signal: config?.signal,
