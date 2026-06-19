@@ -20,9 +20,6 @@
     "prettier": "^3.8.3"
   },
   "dependencies": {
-    "next": "15.5.18",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
     "next-intl": "^4.13.0"
   }
 }
