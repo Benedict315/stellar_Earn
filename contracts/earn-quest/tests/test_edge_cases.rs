@@ -524,7 +524,7 @@ fn test_resolve_dispute_by_wrong_arbitrator_rejected() {
     client.open_dispute(&quest_id, &initiator, &arbitrator);
 
     // Wrong arbitrator → DisputeNotAuthorized (#84)
-    let result = client.try_resolve_dispute(, false, 0u32);
+    let result = client.try_resolve_dispute(let result = client.try_resolve_dispute(, false, 0u32);quest_id, let result = client.try_resolve_dispute(, false, 0u32);initiator, let result = client.try_resolve_dispute(, false, 0u32);wrong_arbitrator, let result = client.try_resolve_dispute(, false, 0u32);false, let result = client.try_resolve_dispute(, false, 0u32);0u32);
     assert!(result.is_err(), "resolve by wrong arbitrator must be rejected");
 }
 
@@ -536,7 +536,7 @@ fn test_withdraw_resolved_dispute_rejected() {
     let quest_id = symbol_short!("D4");
 
     client.open_dispute(&quest_id, &initiator, &arbitrator);
-    client.resolve_dispute(, false, 0u32);
+    client.resolve_dispute(client.resolve_dispute(, false, 0u32);quest_id, client.resolve_dispute(, false, 0u32);initiator, client.resolve_dispute(, false, 0u32);arbitrator, client.resolve_dispute(, false, 0u32);false, client.resolve_dispute(, false, 0u32);0u32);
 
     // Already Resolved, cannot withdraw → DisputeNotPending (#83)
     let result = client.try_withdraw_dispute(&quest_id, &initiator);
