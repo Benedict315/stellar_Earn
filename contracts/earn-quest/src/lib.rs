@@ -692,6 +692,23 @@ impl EarnQuestContract {
         dispute::resolve_dispute(&env, quest_id, initiator, arbitrator, upheld, slash_bps)
     }
 
+    /// Schedule a global arbitrator rotation (SuperAdmin only). Creates a 24h timelock.
+    pub fn schedule_arbitrator_change(env: Env, caller: Address, new_arbitrator: Address) -> Result<(), Error> {
+        security::require_not_paused(&env)?;
+        dispute::schedule_arbitrator_change(&env, caller, new_arbitrator)
+    }
+
+    /// Finalize a scheduled arbitrator rotation after the timelock (SuperAdmin only).
+    pub fn finalize_arbitrator_change(env: Env, caller: Address) -> Result<(), Error> {
+        security::require_not_paused(&env)?;
+        dispute::finalize_arbitrator_change(&env, caller)
+    }
+
+    /// Returns the current global arbitrator, if set.
+    pub fn get_arbitrator(env: Env) -> Option<Address> {
+        storage::get_arbitrator(&env)
+    }
+
 
     /// Withdraws a pending dispute (Initiator only).
     ///

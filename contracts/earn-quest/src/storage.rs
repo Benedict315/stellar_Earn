@@ -103,6 +103,12 @@ pub enum DataKey {
     LevelThresholds,
     /// Pending clawback record keyed by (quest_id, recipient)
     ClawbackPending(Symbol, Address),
+    /// Current global arbitrator address
+    Arbitrator,
+    /// Pending arbitrator address (scheduled change)
+    ArbitratorPending,
+    /// Scheduled time (ledger timestamp) when pending arbitrator can be applied
+    ArbitratorScheduledTime,
 }
 
 //================================================================================
@@ -901,6 +907,46 @@ pub fn get_scheduled_unpause_time(env: &Env) -> Option<u64> {
     env.storage().instance().get(&DataKey::ScheduledUnpauseTime)
 }
 
+//================================================================================
+// Arbitrator Storage Helpers
+//================================================================================
+
+pub fn get_arbitrator(env: &Env) -> Option<Address> {
+    env.storage().instance().get(&DataKey::Arbitrator)
+}
+
+pub fn set_arbitrator(env: &Env, addr: &Address) {
+    env.storage().instance().set(&DataKey::Arbitrator, addr);
+}
+
+pub fn get_pending_arbitrator(env: &Env) -> Option<Address> {
+    env.storage().instance().get(&DataKey::ArbitratorPending)
+}
+
+pub fn set_pending_arbitrator(env: &Env, addr: &Address) {
+    env.storage()
+        .instance()
+        .set(&DataKey::ArbitratorPending, addr);
+}
+
+pub fn clear_pending_arbitrator(env: &Env) {
+    env.storage().instance().remove(&DataKey::ArbitratorPending);
+}
+
+pub fn set_scheduled_arbitrator_time(env: &Env, ts: u64) {
+    env.storage()
+        .instance()
+        .set(&DataKey::ArbitratorScheduledTime, &ts);
+}
+
+pub fn get_scheduled_arbitrator_time(env: &Env) -> Option<u64> {
+    env.storage().instance().get(&DataKey::ArbitratorScheduledTime)
+}
+
+pub fn clear_scheduled_arbitrator_time(env: &Env) {
+    env.storage().instance().remove(&DataKey::ArbitratorScheduledTime);
+}
+
 pub fn clear_unpause_approvals(env: &Env) {
     // Increment the round ID so previous approvals are effectively cleared/invalidated
     inc_unpause_round(env);
@@ -1425,12 +1471,15 @@ mod layout_tests {
         "TokenDecimals",
         "BadgeType",
         "BadgeTypeIds",
+        "Arbitrator",
+        "ArbitratorPending",
+        "ArbitratorScheduledTime",
         "LevelThresholds",
         "MinCreatorLevel",
         "CreatorWhitelist",
     ];
 
-    const EXPECTED_VARIANT_COUNT: usize = 45;
+    const EXPECTED_VARIANT_COUNT: usize = 48;
 
     /// One sample instance per `DataKey` variant for layout audits.
     fn all_data_keys(env: &Env) -> Vec<DataKey> {
@@ -1481,6 +1530,9 @@ mod layout_tests {
         keys.push_back(DataKey::TokenDecimals);
         keys.push_back(DataKey::BadgeType(badge_id.clone()));
         keys.push_back(DataKey::BadgeTypeIds);
+        keys.push_back(DataKey::Arbitrator);
+        keys.push_back(DataKey::ArbitratorPending);
+        keys.push_back(DataKey::ArbitratorScheduledTime);
         keys.push_back(DataKey::LevelThresholds);
         keys.push_back(DataKey::MinCreatorLevel);
         keys.push_back(DataKey::CreatorWhitelist(addr.clone()));

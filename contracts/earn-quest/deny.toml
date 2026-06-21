@@ -52,9 +52,10 @@ severity-threshold = "medium"
 # "deny" means any unexcepted advisory at medium+ severity will fail CI.
 vulnerability = "deny"
 
-# Lint level for crates that are no longer actively maintained.
-# Unmaintained crates are a supply-chain risk even without a known CVE.
-unmaintained = "warn"
+# Scope for crates that are no longer actively maintained.
+# Valid options: "all" | "workspace" | "transitive" | "none"
+# (CI uses this field to determine which crates to consider unmaintained.)
+unmaintained = "all"
 
 # Lint level for crates yanked from crates.io.
 # Yanked versions should be upgraded but are not always a security issue.

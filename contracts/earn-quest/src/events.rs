@@ -18,6 +18,8 @@ const TOPIC_EMERGENCY_UNPAUSED: Symbol = symbol_short!("eunpause");
 const TOPIC_EMERGENCY_WITHDRAW: Symbol = symbol_short!("ewdraw");
 const TOPIC_UNPAUSE_APPROVED: Symbol = symbol_short!("uappr");
 const TOPIC_TIMELOCK_SCHEDULED: Symbol = symbol_short!("tl_sched");
+const TOPIC_ARBITRATOR_SCHEDULED: Symbol = symbol_short!("arb_sched");
+const TOPIC_ARBITRATOR_CHANGED: Symbol = symbol_short!("arb_chng");
 const TOPIC_QUEST_PAUSED: Symbol = symbol_short!("q_pause");
 const TOPIC_QUEST_RESUMED: Symbol = symbol_short!("q_resume");
 const TOPIC_QUEST_CANCELLED: Symbol = symbol_short!("q_cancel");
@@ -131,6 +133,22 @@ pub fn timelock_scheduled(env: &Env, scheduled_time: u64) {
     let topics = (TOPIC_TIMELOCK_SCHEDULED, scheduled_time);
     // Data: timestamp
     let data = (scheduled_time,);
+    env.events().publish(topics, data);
+}
+
+/// Emitted when a new arbitrator change is scheduled (indexed: scheduled_time)
+pub fn arbitrator_scheduled(env: &Env, scheduled_time: u64, new_arbitrator: Address) {
+    let topics = (TOPIC_ARBITRATOR_SCHEDULED, scheduled_time, new_arbitrator.clone());
+    let data = (new_arbitrator,);
+    env.events().publish(topics, data);
+}
+
+/// Emitted when the arbitrator is changed (indexed: old_arbitrator, new_arbitrator)
+pub fn arbitrator_changed(env: &Env, old_arbitrator: Option<Address>, new_arbitrator: Address) {
+    // If no old arbitrator provided, use the current contract address as a sentinel.
+    let old = old_arbitrator.unwrap_or_else(|| env.current_contract_address());
+    let topics = (TOPIC_ARBITRATOR_CHANGED, old.clone(), new_arbitrator.clone());
+    let data = (old, new_arbitrator);
     env.events().publish(topics, data);
 }
 

@@ -29,7 +29,7 @@ pub fn open_dispute(
     env: &Env,
     quest_id: Symbol,
     initiator: Address,
-    arbitrator: Address,
+    _arbitrator: Address,
 ) -> Result<Dispute, Error> {
     // Auth: initiator must sign
     initiator.require_auth();
@@ -43,8 +43,8 @@ pub fn open_dispute(
         // If exists but resolved/withdrawn, allow opening a new one (we'll overwrite)
     }
 
-    // Validate arbitrator is not the zero address (could add more checks)
-    // For simplicity, arbitrator can be any address (could be designated by creator or admin)
+    // Determine the globally configured arbitrator (ignore provided argument)
+    let arbitrator = storage::get_arbitrator(env).ok_or(Error::InvalidAddress)?;
 
     // Create dispute
     let dispute = Dispute {
@@ -101,8 +101,9 @@ pub fn resolve_dispute(
     // Validate status
     match dispute.status {
         DisputeStatus::Pending | DisputeStatus::UnderReview => {
-            // Verify caller is the assigned arbitrator
-            if dispute.arbitrator != arbitrator {
+            // Verify caller is the current global arbitrator (old arbitrators lose authority after rotation)
+            let current = storage::get_arbitrator(env).ok_or(Error::InvalidAddress)?;
+            if current != arbitrator {
                 return Err(Error::DisputeNotAuthorized);
             }
         }
@@ -238,4 +239,45 @@ pub fn has_active_dispute(env: &Env, quest_id: &Symbol, initiator: &Address) -> 
         storage::get_dispute(env, quest_id, initiator).ok(),
         Some(d) if d.status == DisputeStatus::Pending || d.status == DisputeStatus::UnderReview
     )
+}
+
+/// Schedule a global arbitrator rotation. This creates a pending arbitrator and a 24h timelock.
+/// Only a SuperAdmin may call this.
+pub fn schedule_arbitrator_change(env: &Env, caller: Address, new_arbitrator: Address) -> Result<(), Error> {
+    caller.require_auth();
+    if !storage::is_super_admin(env, &caller) {
+        return Err(Error::Unauthorized);
+    }
+
+    // Schedule change in 24h (86400 seconds)
+    let scheduled = env.ledger().timestamp() as u64 + 86400u64;
+    storage::set_pending_arbitrator(env, &new_arbitrator);
+    storage::set_scheduled_arbitrator_time(env, scheduled);
+
+    events::arbitrator_scheduled(env, scheduled, new_arbitrator);
+    Ok(())
+}
+
+/// Finalize a scheduled arbitrator rotation after the timelock has elapsed.
+/// Only a SuperAdmin may call this.
+pub fn finalize_arbitrator_change(env: &Env, caller: Address) -> Result<(), Error> {
+    caller.require_auth();
+    if !storage::is_super_admin(env, &caller) {
+        return Err(Error::Unauthorized);
+    }
+
+    let now = env.ledger().timestamp() as u64;
+    let scheduled = storage::get_scheduled_arbitrator_time(env).ok_or(Error::TimelockNotExpired)?;
+    if now < scheduled {
+        return Err(Error::TimelockNotExpired);
+    }
+
+    let pending = storage::get_pending_arbitrator(env).ok_or(Error::Unauthorized)?;
+    let old = storage::get_arbitrator(env);
+    storage::set_arbitrator(env, &pending);
+    storage::clear_pending_arbitrator(env);
+    storage::clear_scheduled_arbitrator_time(env);
+
+    events::arbitrator_changed(env, old, pending);
+    Ok(())
 }
