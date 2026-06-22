@@ -18,7 +18,9 @@ interface I18nProviderProps {
 }
 
 export function I18nProvider({ children, locale }: I18nProviderProps) {
-  const [messages, setMessages] = useState<Record<string, unknown> | null>(null);
+  const [messages, setMessages] = useState<Record<string, unknown> | null>(
+    null
+  );
   const [currentLocale, setCurrentLocale] = useState(locale || defaultLocale);
 
   useEffect(() => {
