@@ -40,16 +40,16 @@ export const routeLabelMap: Record<string, string> = {
 // Hook to get translated navigation items
 export function useTranslatedNavigation() {
   const t = useTranslations();
-  
+
   return {
-    navigationItems: navigationItems.map(item => ({
+    navigationItems: navigationItems.map((item) => ({
       ...item,
-      label: t(item.labelKey)
+      label: t(item.labelKey),
     })) as TranslatedNavigationItem[],
-    userMenuItems: userMenuItems.map(item => ({
+    userMenuItems: userMenuItems.map((item) => ({
       ...item,
-      label: t(item.labelKey)
-    })) as TranslatedUserMenuItem[]
+      label: t(item.labelKey),
+    })) as TranslatedUserMenuItem[],
   };
 }
 
@@ -62,7 +62,10 @@ export interface TranslatedUserMenuItem extends UserMenuItem {
   label: string;
 }
 
-export function isActiveRoute(pathname: string, item: { href: string; exact?: boolean }): boolean {
+export function isActiveRoute(
+  pathname: string,
+  item: { href: string; exact?: boolean }
+): boolean {
   if (item.exact) {
     return pathname === item.href;
   }
@@ -72,7 +75,7 @@ export function isActiveRoute(pathname: string, item: { href: string; exact?: bo
 
 export function useTranslatedRouteLabel() {
   const t = useTranslations();
-  
+
   return (segment: string): string => {
     const cleanedSegment = decodeURIComponent(segment).toLowerCase();
     const labelKey = routeLabelMap[cleanedSegment];

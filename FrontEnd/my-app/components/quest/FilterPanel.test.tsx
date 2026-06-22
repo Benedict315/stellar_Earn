@@ -18,7 +18,9 @@ describe('FilterPanel keyboard navigation', () => {
       />
     );
 
-    const categoryGroup = screen.getByRole('group', { name: /filter by category/i });
+    const categoryGroup = screen.getByRole('group', {
+      name: /filter by category/i,
+    });
     const categoryButtons = within(categoryGroup).getAllByRole('button');
 
     categoryButtons[0].focus();

@@ -31,7 +31,10 @@ describe('QuestList keyboard navigation', () => {
   test('moves focus to the next quest card with arrow keys', () => {
     render(
       <QuestList
-        quests={[baseQuest('quest-1', 'Quest One'), baseQuest('quest-2', 'Quest Two')]}
+        quests={[
+          baseQuest('quest-1', 'Quest One'),
+          baseQuest('quest-2', 'Quest Two'),
+        ]}
       />
     );
 

@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { isActiveRoute, useTranslatedNavigation } from '@/lib/config/navigation';
+import {
+  isActiveRoute,
+  useTranslatedNavigation,
+} from '@/lib/config/navigation';
 
 interface SidebarProps {
   collapsed?: boolean;

@@ -41,9 +41,7 @@ export const DynamicHowItWorks = dynamic(
 
 export const DynamicFeaturedQuests = dynamic(
   () =>
-    import('../components/homepage/FeaturedQuests').then(
-      (mod) => mod.default
-    ),
+    import('../components/homepage/FeaturedQuests').then((mod) => mod.default),
   {
     ssr: false,
     loading: () => (

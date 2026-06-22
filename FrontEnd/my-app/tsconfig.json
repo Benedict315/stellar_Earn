@@ -24,7 +24,9 @@
       "@/*": ["./*"],
       "@contracts/*": ["../../contracts/*"],
       "@stellar/stellar-sdk": ["./node_modules/@stellar/stellar-sdk/lib/index"],
-      "@stellar/stellar-sdk/contract": ["./node_modules/@stellar/stellar-sdk/lib/contract/index"]
+      "@stellar/stellar-sdk/contract": [
+        "./node_modules/@stellar/stellar-sdk/lib/contract/index"
+      ]
     }
   },
   "include": [
