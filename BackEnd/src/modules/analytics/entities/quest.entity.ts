@@ -52,7 +52,7 @@ export class Quest {
 
   @Column({ default: 'ACTIVE' })
   @Index()
-  status: string;
+  status: QuestStatus;
 
   @Column({ type: 'int', default: 0 })
   totalClaims: number;

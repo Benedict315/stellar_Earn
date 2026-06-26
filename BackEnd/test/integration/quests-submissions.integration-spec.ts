@@ -51,7 +51,9 @@ describe('Quests-Submissions Integration', () => {
     })
       .overrideProvider(StellarService)
       .useValue({
-        approveSubmission: jest.fn().mockResolvedValue({ transactionHash: 'tx-hash-mock' }),
+        approveSubmission: jest
+          .fn()
+          .mockResolvedValue({ transactionHash: 'tx-hash-mock' }),
         getContractId: jest.fn().mockReturnValue('mock-contract-id'),
       })
       .compile();
@@ -81,8 +83,7 @@ describe('Quests-Submissions Integration', () => {
       // Create a test user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAQUEST',
+        stellarAddress: 'GAQUEST',
         displayName: 'Quest Tester',
       });
 
@@ -116,7 +117,11 @@ describe('Quests-Submissions Integration', () => {
         notes: 'submission notes',
       };
 
-      const submission = await submissionsService.createSubmission(quest.id, submissionData, user.id);
+      const submission = await submissionsService.createSubmission(
+        quest.id,
+        submissionData,
+        user.id,
+      );
 
       // Verify submission was created
       expect(submission.questId).toBe(quest.id);
@@ -129,31 +134,37 @@ describe('Quests-Submissions Integration', () => {
       // Create user and quest
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GASTATS',
+        stellarAddress: 'GASTATS',
       });
 
-      const quest = await questsService.create({
-        title: 'Stats Quest',
-        description: 'Test quest for stats',
-        rewardAmount: 50,
-        maxCompletions: 5,
-        requirements: 'Submit work',
-        category: 'stats',
-        difficulty: 'medium' as const,
-        status: 'ACTIVE',
-        contractTaskId: 'task-002',
-        rewardAsset: 'XLM',
-        verifierType: 'manual',
-        verifierConfig: {},
-      }, user.stellarAddress);
+      const quest = await questsService.create(
+        {
+          title: 'Stats Quest',
+          description: 'Test quest for stats',
+          rewardAmount: 50,
+          maxCompletions: 5,
+          requirements: 'Submit work',
+          category: 'stats',
+          difficulty: 'medium' as const,
+          status: 'ACTIVE',
+          contractTaskId: 'task-002',
+          rewardAsset: 'XLM',
+          verifierType: 'manual',
+          verifierConfig: {},
+        },
+        user.stellarAddress,
+      );
 
       // Create submission
-      const submission = await submissionsService.createSubmission(quest.id, {
-        fileName: 'submission.pdf',
-        fileContent: 'base64-encoded-content',
-        notes: 'Stats test submission',
-      }, user.id);
+      const submission = await submissionsService.createSubmission(
+        quest.id,
+        {
+          fileName: 'submission.pdf',
+          fileContent: 'base64-encoded-content',
+          notes: 'Stats test submission',
+        },
+        user.id,
+      );
 
       // Approve submission (simulating admin action)
       const approvedSubmission = await submissionsService.approveSubmission(
@@ -175,40 +186,50 @@ describe('Quests-Submissions Integration', () => {
       // Create user and quest
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GADUPE',
+        stellarAddress: 'GADUPE',
       });
 
-      const quest = await questsService.create({
-        title: 'Duplicate Test Quest',
-        description: 'Test duplicate submissions',
-        rewardAmount: 25,
-        maxCompletions: 3,
-        requirements: 'No duplicates',
-        category: 'testing',
-        difficulty: 'easy' as const,
-        status: 'ACTIVE',
-        contractTaskId: 'task-003',
-        rewardAsset: 'XLM',
-        verifierType: 'manual',
-        verifierConfig: {},
-      }, user.stellarAddress);
+      const quest = await questsService.create(
+        {
+          title: 'Duplicate Test Quest',
+          description: 'Test duplicate submissions',
+          rewardAmount: 25,
+          maxCompletions: 3,
+          requirements: 'No duplicates',
+          category: 'testing',
+          difficulty: 'easy' as const,
+          status: 'ACTIVE',
+          contractTaskId: 'task-003',
+          rewardAsset: 'XLM',
+          verifierType: 'manual',
+          verifierConfig: {},
+        },
+        user.stellarAddress,
+      );
 
       // First submission
-      const submission1 = await submissionsService.createSubmission(quest.id, {
-        fileName: 'submission.pdf',
-        fileContent: 'base64-encoded-content',
-        notes: 'First submission',
-      }, user.id);
+      const submission1 = await submissionsService.createSubmission(
+        quest.id,
+        {
+          fileName: 'submission.pdf',
+          fileContent: 'base64-encoded-content',
+          notes: 'First submission',
+        },
+        user.id,
+      );
 
       expect(submission1).toBeDefined();
 
       // Second submission should succeed (service does not check for duplicates)
-      const submission2 = await submissionsService.createSubmission(quest.id, {
-        fileName: 'second-submission.pdf',
-        fileContent: 'base64-encoded-content-2',
-        notes: 'Second submission',
-      }, user.id);
+      const submission2 = await submissionsService.createSubmission(
+        quest.id,
+        {
+          fileName: 'second-submission.pdf',
+          fileContent: 'base64-encoded-content-2',
+          notes: 'Second submission',
+        },
+        user.id,
+      );
 
       expect(submission2).toBeDefined();
       expect(submission2.proof.fileName).toBe('second-submission.pdf');
@@ -220,31 +241,37 @@ describe('Quests-Submissions Integration', () => {
       // Create user and quest
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAEVENT',
+        stellarAddress: 'GAEVENT',
       });
 
-      const quest = await questsService.create({
-        title: 'Event Test Quest',
-        description: 'Test event emission',
-        rewardAmount: 75,
-        maxCompletions: 2,
-        requirements: 'Test events',
-        category: 'events',
-        difficulty: 'hard' as const,
-        status: 'ACTIVE',
-        contractTaskId: 'task-004',
-        rewardAsset: 'XLM',
-        verifierType: 'manual',
-        verifierConfig: {},
-      }, user.stellarAddress);
+      const quest = await questsService.create(
+        {
+          title: 'Event Test Quest',
+          description: 'Test event emission',
+          rewardAmount: 75,
+          maxCompletions: 2,
+          requirements: 'Test events',
+          category: 'events',
+          difficulty: 'hard' as const,
+          status: 'ACTIVE',
+          contractTaskId: 'task-004',
+          rewardAsset: 'XLM',
+          verifierType: 'manual',
+          verifierConfig: {},
+        },
+        user.stellarAddress,
+      );
 
       // Create submission
-      const submission = await submissionsService.createSubmission(quest.id, {
-        fileName: 'submission.pdf',
-        fileContent: 'base64-encoded-content',
-        notes: 'Event test submission',
-      }, user.id);
+      const submission = await submissionsService.createSubmission(
+        quest.id,
+        {
+          fileName: 'submission.pdf',
+          fileContent: 'base64-encoded-content',
+          notes: 'Event test submission',
+        },
+        user.id,
+      );
 
       expect(submission.status).toBe('PENDING');
 

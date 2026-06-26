@@ -19,14 +19,16 @@ const mockModerationService = {
 
 const mockHealthService = {
   getSystemHealth: jest.fn().mockResolvedValue({ status: 'healthy' }),
-  checkModerationHealth: jest.fn().mockResolvedValue({ queueSize: 0, averageProcessingTime: 100 }),
+  checkModerationHealth: jest
+    .fn()
+    .mockResolvedValue({ queueSize: 0, averageProcessingTime: 100 }),
 };
 
 describe('Moderation-Health Integration', () => {
   let module: TestingModule;
   let moderationService: typeof mockModerationService;
-  let healthService: typeof mockHealthService;
-  let usersService: UsersService;
+  let _healthService: typeof mockHealthService;
+  let _usersService: UsersService;
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
@@ -61,8 +63,8 @@ describe('Moderation-Health Integration', () => {
     }).compile();
 
     moderationService = module.get('ModerationService');
-    healthService = module.get('HealthService');
-    usersService = module.get<UsersService>(UsersService);
+    _healthService = module.get('HealthService');
+    _usersService = module.get<UsersService>(UsersService);
   });
 
   afterAll(async () => {
@@ -79,16 +81,14 @@ describe('Moderation-Health Integration', () => {
     it('should moderate content and track moderation health metrics', async () => {
       const userRepository = module.get('UserRepository');
       const moderator = await userRepository.save({
-        stellarAddress:
-          'GAMOD',
+        stellarAddress: 'GAMOD',
         displayName: 'Content Moderator',
         role: 'MODERATOR',
       });
 
       const contentCreatorRepository = module.get('UserRepository');
       const contentCreator = await contentCreatorRepository.save({
-        stellarAddress:
-          'GACREATOR',
+        stellarAddress: 'GACREATOR',
         displayName: 'Content Creator',
       });
 
@@ -150,8 +150,7 @@ describe('Moderation-Health Integration', () => {
     it('should handle moderation queue health and system load', async () => {
       const userRepository = module.get('UserRepository');
       const moderator = await userRepository.save({
-        stellarAddress:
-          'GAQUEUE',
+        stellarAddress: 'GAQUEUE',
         displayName: 'Queue Moderator',
         role: 'MODERATOR',
       });
@@ -217,8 +216,7 @@ describe('Moderation-Health Integration', () => {
     it('should perform health checks on moderation service components', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAHEALTH',
+        stellarAddress: 'GAHEALTH',
         displayName: 'Health Check User',
       });
 
@@ -259,8 +257,7 @@ describe('Moderation-Health Integration', () => {
     it('should monitor moderation performance and response times', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAPERF',
+        stellarAddress: 'GAPERF',
         displayName: 'Performance Test User',
       });
 
@@ -327,8 +324,7 @@ describe('Moderation-Health Integration', () => {
     it('should handle moderation escalation for high-priority content', async () => {
       const userRepository = module.get('UserRepository');
       const juniorModerator = await userRepository.save({
-        stellarAddress:
-          'GAJUNIOR',
+        stellarAddress: 'GAJUNIOR',
         displayName: 'Junior Moderator',
         role: 'MODERATOR',
         moderationLevel: 'junior',
@@ -336,8 +332,7 @@ describe('Moderation-Health Integration', () => {
 
       const userRepository2 = module.get('UserRepository');
       const seniorModerator = await userRepository2.save({
-        stellarAddress:
-          'GASENIOR',
+        stellarAddress: 'GASENIOR',
         displayName: 'Senior Moderator',
         role: 'MODERATOR',
         moderationLevel: 'senior',
@@ -402,8 +397,7 @@ describe('Moderation-Health Integration', () => {
     it('should monitor moderation system health and trigger alerts', async () => {
       const userRepository = module.get('UserRepository');
       const moderator = await userRepository.save({
-        stellarAddress:
-          'GAALERT',
+        stellarAddress: 'GAALERT',
         displayName: 'Alert Test Moderator',
         role: 'MODERATOR',
       });

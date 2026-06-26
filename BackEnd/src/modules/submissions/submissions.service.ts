@@ -249,7 +249,11 @@ export class SubmissionsService {
       );
     }
 
-    await this.validateVerifierAuthorization(quest.id, verifierId, verifier.stellarAddress);
+    await this.validateVerifierAuthorization(
+      quest.id,
+      verifierId,
+      verifier.stellarAddress ?? undefined,
+    );
     this.validateStatusTransition(submission.status, 'APPROVED');
 
     // Validate the submitter has a Stellar address linked BEFORE we mutate
@@ -421,7 +425,11 @@ export class SubmissionsService {
       throw new ForbiddenException(`Verifier with id ${verifierId} not found`);
     }
 
-    await this.validateVerifierAuthorization(quest.id, verifierId, verifier.stellarAddress);
+    await this.validateVerifierAuthorization(
+      quest.id,
+      verifierId,
+      verifier.stellarAddress ?? undefined,
+    );
     this.validateStatusTransition(submission.status, 'REJECTED');
 
     if (!rejectDto.reason || rejectDto.reason.trim().length === 0) {
@@ -532,7 +540,9 @@ export class SubmissionsService {
     }
   }
 
-  private async getQuestWithVerifiers(questId: string): Promise<QuestWithVerifiers> {
+  private async getQuestWithVerifiers(
+    questId: string,
+  ): Promise<QuestWithVerifiers> {
     const quest = await this.questsRepository.findOne({
       where: { id: questId },
     });

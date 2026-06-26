@@ -46,7 +46,9 @@ describe('Auth-Users Integration', () => {
         sign: jest.fn().mockReturnValue('test-access-token'),
         verify: jest.fn(),
         signAsync: jest.fn().mockResolvedValue('test-access-token'),
-        verifyAsync: jest.fn().mockResolvedValue({ stellarAddress: 'test', sub: 'test' }),
+        verifyAsync: jest
+          .fn()
+          .mockResolvedValue({ stellarAddress: 'test', sub: 'test' }),
         decode: jest.fn(),
       })
       .compile();
@@ -70,8 +72,7 @@ describe('Auth-Users Integration', () => {
 
   describe('Complete Authentication Flow', () => {
     it('should create user and generate tokens through auth flow', async () => {
-      const stellarAddress =
-        'GATEST001';
+      const stellarAddress = 'GATEST001';
 
       // Login (generate authentication tokens)
       const authResult = authService.login(stellarAddress);
@@ -88,8 +89,7 @@ describe('Auth-Users Integration', () => {
     });
 
     it('should handle user stats updates through auth interactions', async () => {
-      const stellarAddress =
-        'GATEST002';
+      const stellarAddress = 'GATEST002';
 
       // Create user via repository
       const userRepository = module.get('UserRepository');
@@ -107,8 +107,7 @@ describe('Auth-Users Integration', () => {
     });
 
     it('should integrate user profile updates with auth tokens', async () => {
-      const stellarAddress =
-        'GATEST003';
+      const stellarAddress = 'GATEST003';
 
       // Create user via repository
       const userRepository = module.get('UserRepository');
@@ -133,8 +132,7 @@ describe('Auth-Users Integration', () => {
 
   describe('Cross-Module Data Consistency', () => {
     it('should maintain data consistency between auth and users modules', async () => {
-      const stellarAddress =
-        'GATEST004';
+      const stellarAddress = 'GATEST004';
 
       // Create user through repository
       const userRepository = module.get('UserRepository');

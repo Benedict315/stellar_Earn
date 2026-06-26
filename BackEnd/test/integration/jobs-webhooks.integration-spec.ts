@@ -25,7 +25,7 @@ describe('Jobs-Webhooks Integration', () => {
   let module: TestingModule;
   let jobsService: typeof mockJobsService;
   let webhooksService: typeof mockWebhooksService;
-  let usersService: UsersService;
+  let _usersService: UsersService;
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
@@ -62,7 +62,7 @@ describe('Jobs-Webhooks Integration', () => {
 
     jobsService = module.get('JobsService');
     webhooksService = module.get('WebhooksService');
-    usersService = module.get<UsersService>(UsersService);
+    _usersService = module.get<UsersService>(UsersService);
   });
 
   afterAll(async () => {
@@ -79,8 +79,7 @@ describe('Jobs-Webhooks Integration', () => {
     it('should create job and trigger webhook on completion', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAJOB',
+        stellarAddress: 'GAJOB',
         displayName: 'Job Test User',
       });
 
@@ -159,8 +158,7 @@ describe('Jobs-Webhooks Integration', () => {
     it('should handle job failures and trigger failure webhooks', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAFAIL',
+        stellarAddress: 'GAFAIL',
         displayName: 'Failure Test User',
       });
 
@@ -252,8 +250,7 @@ describe('Jobs-Webhooks Integration', () => {
     it('should handle scheduled jobs with webhook retry logic', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GASCHED',
+        stellarAddress: 'GASCHED',
         displayName: 'Scheduled Job User',
       });
 
@@ -349,8 +346,7 @@ describe('Jobs-Webhooks Integration', () => {
     it('should handle webhook delivery failures with retry mechanism', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GARETRY',
+        stellarAddress: 'GARETRY',
         displayName: 'Retry Test User',
       });
 
@@ -425,8 +421,7 @@ describe('Jobs-Webhooks Integration', () => {
     it('should handle bulk job creation and batched webhook notifications', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GABULK',
+        stellarAddress: 'GABULK',
         displayName: 'Bulk Job User',
       });
 
@@ -507,8 +502,7 @@ describe('Jobs-Webhooks Integration', () => {
     it('should maintain job-webhook relationship integrity', async () => {
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GARELATION',
+        stellarAddress: 'GARELATION',
         displayName: 'Relationship Test User',
       });
 

@@ -21,12 +21,14 @@ describe('SorobanQuestReaderService (integration)', () => {
             startSpan: jest.fn(),
             endSpan: jest.fn(),
             inject: jest.fn(),
-            trace: jest.fn((_name: string, fn: (span: any) => any) => fn({
-              attributes: {},
-              status: undefined,
-              setAttribute: jest.fn(),
-              setStatus: jest.fn(),
-            })),
+            trace: jest.fn((_name: string, fn: (span: any) => any) =>
+              fn({
+                attributes: {},
+                status: undefined,
+                setAttribute: jest.fn(),
+                setStatus: jest.fn(),
+              }),
+            ),
           },
         },
         {

@@ -40,7 +40,7 @@ export class Submission {
 
   @Column({ default: 'PENDING' })
   @Index()
-  status: string;
+  status: SubmissionStatus;
 
   @Column({ type: 'timestamp', nullable: true })
   @Index()

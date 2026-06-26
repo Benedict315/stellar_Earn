@@ -73,8 +73,7 @@ describe('Payouts-Stellar Integration', () => {
       // Create a test user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAREWARD',
+        stellarAddress: 'GAREWARD',
         displayName: 'Reward Tester',
       });
 
@@ -107,8 +106,7 @@ describe('Payouts-Stellar Integration', () => {
       // Create user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAAPPROVE',
+        stellarAddress: 'GAAPPROVE',
       });
 
       // Create payout
@@ -131,8 +129,7 @@ describe('Payouts-Stellar Integration', () => {
       // Create user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GABALANCE',
+        stellarAddress: 'GABALANCE',
       });
 
       // Get initial user stats
@@ -183,13 +180,11 @@ describe('Payouts-Stellar Integration', () => {
       // Create multiple users
       const userRepository = module.get('UserRepository');
       const user1 = await userRepository.save({
-        stellarAddress:
-          'GAMULTI1',
+        stellarAddress: 'GAMULTI1',
       });
 
       const user2 = await userRepository.save({
-        stellarAddress:
-          'GAMULTI2',
+        stellarAddress: 'GAMULTI2',
       });
 
       // Create multiple payouts
@@ -225,8 +220,7 @@ describe('Payouts-Stellar Integration', () => {
       // Create user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAERROR',
+        stellarAddress: 'GAERROR',
       });
 
       // Create payout

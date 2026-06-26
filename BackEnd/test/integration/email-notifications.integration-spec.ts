@@ -10,13 +10,16 @@ import { EmailService } from '#src/modules/email/email.service';
 import { NotificationsService } from '#src/modules/notifications/notifications.service';
 import { UsersService } from '#src/modules/users/users.service';
 import { User } from '#src/modules/users/entities/user.entity';
-import { Notification, NotificationType } from '#src/modules/notifications/entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '#src/modules/notifications/entities/notification.entity';
 
 describe('Email-Notifications Integration', () => {
   let module: TestingModule;
   let _emailService: EmailService;
-  let notificationsService: NotificationsService;
-  let usersService: UsersService;
+  let _notificationsService: NotificationsService;
+  let _usersService: UsersService;
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
@@ -49,9 +52,9 @@ describe('Email-Notifications Integration', () => {
     }).compile();
 
     _emailService = module.get<EmailService>(EmailService);
-    notificationsService =
+    _notificationsService =
       module.get<NotificationsService>(NotificationsService);
-    usersService = module.get<UsersService>(UsersService);
+    _usersService = module.get<UsersService>(UsersService);
   });
 
   afterAll(async () => {
@@ -72,8 +75,7 @@ describe('Email-Notifications Integration', () => {
       // Create a test user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAEMAIL',
+        stellarAddress: 'GAEMAIL',
         email: 'test@example.com',
         displayName: 'Email Test User',
       });
@@ -155,8 +157,7 @@ describe('Email-Notifications Integration', () => {
       // Create user with email preferences
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAPREFS',
+        stellarAddress: 'GAPREFS',
         email: 'prefs@example.com',
         displayName: 'Prefs User',
       });
@@ -191,8 +192,7 @@ describe('Email-Notifications Integration', () => {
       // Create user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAREAD',
+        stellarAddress: 'GAREAD',
         email: 'read@example.com',
         displayName: 'Read Status User',
       });
@@ -234,8 +234,7 @@ describe('Email-Notifications Integration', () => {
       // Create user
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAQUEUE',
+        stellarAddress: 'GAQUEUE',
         email: 'queue@example.com',
         displayName: 'Queue User',
       });
@@ -291,8 +290,7 @@ describe('Email-Notifications Integration', () => {
       // Create user with invalid email (for testing failure handling)
       const userRepository = module.get('UserRepository');
       const user = await userRepository.save({
-        stellarAddress:
-          'GAFAIL',
+        stellarAddress: 'GAFAIL',
         email: 'invalid-email-address', // Invalid email format
         displayName: 'Failure User',
       });
