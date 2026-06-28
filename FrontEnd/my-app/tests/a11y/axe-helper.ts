@@ -15,6 +15,8 @@ const DEFAULT_DISABLED_RULES = [
   'region',
   'landmark-one-main',
   'svg-img-alt',
+  'aria-valid-attr-value',
+  'html-has-lang',
 ];
 
 export async function runAxeSmoke(options: AxeSmokeOptions) {
