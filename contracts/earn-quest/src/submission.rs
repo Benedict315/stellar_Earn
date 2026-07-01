@@ -35,7 +35,7 @@ pub fn commit_submission(
     // Validate quest has not expired
     let grace_period_seconds = quest
         .grace_period_seconds
-        .unwrap_or(storage::get_default_quest_grace_period_seconds(env));
+        .unwrap_or(storage::get_default_grace_period(env));
     validation::validate_quest_not_expired(env, quest.deadline, grace_period_seconds)?;
 
     // Check for existing submission to prevent double submission
@@ -152,7 +152,7 @@ pub fn submit_proof(
     // Validate quest has not expired
     let grace_period_seconds = quest
         .grace_period_seconds
-        .unwrap_or(storage::get_default_quest_grace_period_seconds(env));
+        .unwrap_or(storage::get_default_grace_period(env));
     validation::validate_quest_not_expired(env, quest.deadline, grace_period_seconds)?;
     // Validate submitter address
     validation::validate_badge_count(0)?; // Example: badge count check for submitter

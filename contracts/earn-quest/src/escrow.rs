@@ -312,7 +312,7 @@ pub fn expire_quest(env: &Env, quest_id: &Symbol, caller: &Address) -> Result<i1
     // Quest deadline must have passed (with expiry buffer to absorb clock drift)
     let grace_period_seconds = quest
         .grace_period_seconds
-        .unwrap_or(storage::get_default_quest_grace_period_seconds(env));
+        .unwrap_or(storage::get_default_grace_period(env));
     if !validation::is_quest_expired(env, quest.deadline, grace_period_seconds) {
         return Err(Error::QuestNotActive); // Not yet definitively expired
     }

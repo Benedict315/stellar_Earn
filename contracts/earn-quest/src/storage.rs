@@ -1096,7 +1096,7 @@ pub fn set_config(env: &Env, config: &Vec<(String, String)>) {
         .set(&DataKey::ContractConfig, config);
 }
 
-pub fn get_default_quest_grace_period_seconds(env: &Env) -> u64 {
+pub fn get_default_grace_period(env: &Env) -> u64 {
     env.storage()
         .instance()
         .get(&DataKey::DefaultQuestGracePeriodSeconds)

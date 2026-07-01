@@ -378,8 +378,8 @@ impl EarnQuestContract {
     }
 
     /// Returns the global default quest expiry grace period in seconds.
-    pub fn get_default_quest_grace_period_seconds(env: Env) -> u64 {
-        storage::get_default_quest_grace_period_seconds(&env)
+    pub fn get_default_grace_period(env: Env) -> u64 {
+        storage::get_default_grace_period(&env)
     }
 
     /// Pauses an individual quest (Admin only).
