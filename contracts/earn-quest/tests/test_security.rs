@@ -5,6 +5,7 @@ use soroban_sdk::token::{StellarAssetClient, TokenClient};
 use soroban_sdk::{symbol_short, Address, Env};
 
 extern crate earn_quest;
+use earn_quest::errors::Error;
 use earn_quest::{EarnQuestContract, EarnQuestContractClient};
 
 fn setup_contract(env: &Env) -> (Address, EarnQuestContractClient<'_>) {
@@ -230,7 +231,7 @@ fn test_re_pause_within_cooldown_returns_pause_cooldown_error() {
     unpause_contract(&client, &admin1, &admin2);
 
     let result = client.try_emergency_pause(&admin1);
-    assert!(matches!(result, Err(Ok(earn_quest::Error::PauseCooldown))));
+    assert!(matches!(result, Err(Ok(Error::PauseCooldown))));
 }
 
 #[test]
@@ -276,7 +277,7 @@ fn test_superadmin_can_set_pause_cooldown() {
 
     set_ledger_timestamp(&env, 5_000 + 30);
     let too_soon = client.try_emergency_pause(&admin1);
-    assert!(matches!(too_soon, Err(Ok(earn_quest::Error::PauseCooldown))));
+    assert!(matches!(too_soon, Err(Ok(Error::PauseCooldown))));
 
     set_ledger_timestamp(&env, 5_000 + 60);
     client.emergency_pause(&admin1);
@@ -295,5 +296,5 @@ fn test_non_superadmin_cannot_set_pause_cooldown() {
     client.add_admin(&admin1, &admin2);
 
     let result = client.try_set_pause_cooldown_seconds(&admin2, &60u64);
-    assert!(matches!(result, Err(Ok(earn_quest::Error::Unauthorized))));
+    assert!(matches!(result, Err(Ok(Error::Unauthorized))));
 }
