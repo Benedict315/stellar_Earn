@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -10,6 +11,9 @@ import { SecurityMiddleware } from './common/middleware/security.middleware';
 import { dataSourceOptions } from './database/data-source';
 import { LoggerModule } from './common/logger/logger.module';
 import { StartupReadinessService } from './common/services/startup-readiness.service';
+import { FileUploadModule } from './common/upload/file-upload.module';
+import { ApiVersionGuard } from './common/guards/versioning.guard';
+import { VersioningInterceptor } from './common/interceptors/versioning.interceptor';
 
 import { AdminModule } from './modules/admin/admin.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
@@ -35,6 +39,27 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { TraceInterceptor } from './modules/trace/trace.interceptor';
 import { EventsModule } from './events/events.module';
+import { shouldInitializeDatabaseConnection } from './config/database.config';
+
+const typeOrmImports = shouldInitializeDatabaseConnection()
+  ? [TypeOrmModule.forRoot(dataSourceOptions)]
+  : [];
+
+const dataSourceProvider = shouldInitializeDatabaseConnection()
+  ? []
+  : [
+      {
+        provide: DataSource,
+        useFactory: () =>
+          new DataSource({
+            type: 'postgres',
+            url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres',
+            entities: [],
+            synchronize: false,
+            logging: false,
+          }),
+      },
+    ];
 
 @Module({
   imports: [
@@ -42,8 +67,9 @@ import { EventsModule } from './events/events.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    TypeOrmModule.forRoot(dataSourceOptions),
+    ...typeOrmImports,
     LoggerModule.forRoot(),
+    FileUploadModule,
     EventsModule,
     AdminModule,
     AnalyticsModule,
@@ -74,6 +100,17 @@ import { EventsModule } from './events/events.module';
     AppLoggerService,
     SecurityMiddleware,
     StartupReadinessService,
+    ...dataSourceProvider,
+    {
+      provide: APP_GUARD,
+      useClass: ApiVersionGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useFactory: (reflector: Reflector) =>
+        new VersioningInterceptor(reflector),
+      inject: [Reflector],
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TraceInterceptor,
