@@ -88,6 +88,7 @@ pub fn register_quest_with_category(
 }
 
 /// Registers a new quest with an explicit numeric category and optional grace period.
+#[allow(clippy::too_many_arguments)]
 pub fn register_quest_with_category_and_grace_period(
     env: &Env,
     id: &Symbol,
