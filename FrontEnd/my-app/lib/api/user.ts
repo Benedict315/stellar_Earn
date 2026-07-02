@@ -27,9 +27,11 @@ import type {
   UpdateProfileRequest,
   UserSearchParams,
   PaginationParams,
+  QuestResponse,
+  SubmissionResponse,
 } from '@/lib/types/api.types';
 
-import type { QuestResponse, SubmissionResponse } from '@/lib/types/api.types';
+import type { Quest } from '@/lib/types/quest';
 import { mapQuest, mapSubmission, mapUserStats, mapBadgeIdToBadge } from './mappers';
 
 // Re-export legacy dashboard types for backward compat
@@ -296,9 +298,10 @@ export async function deleteAccount(address: string): Promise<void> {
 // Legacy dashboard helpers (backward compatibility for existing UI)
 // ---------------------------------------------------------------------------
 
-export async function fetchActiveQuests(): Promise<QuestResponse[]> {
+export async function fetchActiveQuests(): Promise<Quest[]> {
   await dashboardDelay(250);
-  return [...mockActiveQuests];
+  const responses: QuestResponse[] = [...mockActiveQuests];
+  return responses.map(mapQuest);
 }
 
 export async function fetchRecentSubmissions(): Promise<SubmissionResponse[]> {

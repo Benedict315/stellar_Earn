@@ -23,94 +23,71 @@ import type {
 } from '@/lib/types/dashboard';
 
 /**
- * Maps a raw QuestResponse (DTO) to the UI Quest domain model.
- * Normalizes enums and provides defaults for optional/nullable fields.
+ * Maps a QuestResponse (API DTO) to the UI Quest domain model.
+ * This is the single source of truth for converting API data to UI models.
+ * All API-to-UI transformations should go through this mapper.
  */
-export function mapQuest(dto: any): Quest {
-  if (!dto) {
-    throw new Error('mapQuest: dto is null or undefined');
-  }
-
-  // Handle nested data wrappers if they exist in legacy code/tests
-  const raw = dto.data && typeof dto.data === 'object' && !Array.isArray(dto.data) ? dto.data : dto;
-
-  // Status mapping and normalization
+export function mapQuest(dto: QuestResponse): Quest {
+  // Status mapping: normalize API status to UI QuestStatus enum
   let status: QuestStatus = QuestStatus.ACTIVE;
-  if (raw.status) {
-    const s = String(raw.status).trim();
+  if (dto.status) {
+    const s = String(dto.status).trim();
     const normalized = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     if (Object.values(QuestStatus).includes(normalized as any)) {
       status = normalized as QuestStatus;
     }
   }
 
-  // Difficulty mapping and normalization
+  // Difficulty mapping: normalize API difficulty to UI QuestDifficulty enum
   let difficulty: QuestDifficulty | undefined = undefined;
-  if (raw.difficulty) {
-    const d = String(raw.difficulty).trim().toLowerCase();
+  if (dto.difficulty) {
+    const d = String(dto.difficulty).trim().toLowerCase();
     if (Object.values(QuestDifficulty).includes(d as any)) {
       difficulty = d as QuestDifficulty;
     }
   }
 
   return {
-    id: raw.id || '',
-    contractQuestId: raw.contractQuestId || '',
-    title: raw.title || '',
-    description: raw.description || '',
-    category: raw.category || '',
-    rewardAsset: raw.rewardAsset || '',
-    rewardAmount: raw.rewardAmount !== undefined ? raw.rewardAmount : '0',
-    xpReward: raw.xpReward,
-    verifierAddress: raw.verifierAddress || '',
-    deadline: raw.deadline,
-    status,
+    id: dto.id,
+    contractQuestId: dto.contractQuestId,
+    title: dto.title,
+    description: dto.description,
+    category: dto.category,
     difficulty,
-    totalClaims: raw.totalClaims || 0,
-    totalSubmissions: raw.totalSubmissions || 0,
-    approvedSubmissions: raw.approvedSubmissions || 0,
-    rejectedSubmissions: raw.rejectedSubmissions || 0,
-    maxParticipants: raw.maxParticipants,
-    currentParticipants: raw.currentParticipants,
-    requirements: raw.requirements || [],
-    tags: raw.tags || [],
-    creator: raw.creator,
-    skills: raw.skills || [],
-    createdAt: raw.createdAt || new Date().toISOString(),
-    updatedAt: raw.updatedAt || new Date().toISOString(),
+    rewardAsset: dto.rewardAsset,
+    rewardAmount: dto.rewardAmount,
+    xpReward: dto.xpReward,
+    verifierAddress: dto.verifierAddress,
+    deadline: dto.deadline,
+    status,
+    totalClaims: dto.totalClaims,
+    totalSubmissions: dto.totalSubmissions,
+    approvedSubmissions: dto.approvedSubmissions,
+    rejectedSubmissions: dto.rejectedSubmissions,
+    maxParticipants: dto.maxParticipants,
+    currentParticipants: dto.currentParticipants,
+    requirements: dto.requirements || [],
+    tags: dto.tags || [],
+    creator: dto.creator,
+    skills: dto.skills || [],
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt,
   };
 }
 
 /**
- * Maps a raw PaginatedQuestsResponse to the UI PaginatedResponse<Quest> model.
+ * Maps a PaginatedQuestsResponse (API DTO) to the UI PaginatedResponse<Quest> model.
+ * This is the single source of truth for converting paginated API data to UI models.
  */
-export function mapPaginatedQuests(dto: any): PaginatedResponse<Quest> {
-  if (!dto) {
-    return {
-      data: [],
-      total: 0,
-      page: 1,
-      limit: 12,
-      totalPages: 0,
-    };
-  }
-
-  // Support both backend format (`quests`) and legacy mock server format (`data`)
-  const questsRaw = dto.quests || dto.data || [];
-  const data = Array.isArray(questsRaw) ? questsRaw.map(mapQuest) : [];
-
-  const meta = dto.meta || {};
-  const page = dto.page ?? meta.page ?? 1;
-  const limit = dto.limit ?? meta.limit ?? 12;
-  const total = dto.total ?? meta.total ?? data.length;
-  const totalPages = dto.totalPages ?? meta.totalPages ?? Math.ceil(total / limit);
+export function mapPaginatedQuests(dto: PaginatedQuestsResponse): PaginatedResponse<Quest> {
+  const data = dto.quests.map(mapQuest);
 
   return {
     data,
-    total,
-    page,
-    limit,
-    totalPages,
+    total: dto.total,
+    page: dto.page,
+    limit: dto.limit,
+    totalPages: dto.totalPages,
   };
 }
 
